@@ -48,6 +48,14 @@ interface DashboardStats {
       amount: { "42.5": number; "32.5": number };
       totalAmount: number;
     };
+    expenses: {
+      amount: { "42.5": number; "32.5": number };
+      totalAmount: number;
+    };
+    net: {
+      amount: { "42.5": number; "32.5": number };
+      totalAmount: number;
+    };
   }>;
   recentTransactions: Array<{
     id: string;
@@ -189,6 +197,12 @@ export default function AdminDashboard() {
                         Amount: {formatCurrency(user.sales.amount["42.5"])}
                       </span>
                       <span className="text-xs text-muted-foreground">
+                        Expenses: {formatCurrency(user.expenses.amount["42.5"])}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Net: {formatCurrency(user.net.amount["42.5"])}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
                         Stock: {user.stock.remaining["42.5"]} /{" "}
                         {user.stock.assigned["42.5"]}
                       </span>
@@ -204,17 +218,41 @@ export default function AdminDashboard() {
                         Amount: {formatCurrency(user.sales.amount["32.5"])}
                       </span>
                       <span className="text-xs text-muted-foreground">
+                        Expenses: {formatCurrency(user.expenses.amount["32.5"])}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Net: {formatCurrency(user.net.amount["32.5"])}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
                         Stock: {user.stock.remaining["32.5"]} /{" "}
                         {user.stock.assigned["32.5"]}
                       </span>
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-background">
+                      <span className="text-sm text-muted-foreground">
+                        Total Sales
+                      </span>
+                      <span className="font-semibold">
+                        {formatCurrency(user.sales.totalAmount)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-background">
+                      <span className="text-sm text-muted-foreground">
+                        Total Expenses
+                      </span>
+                      <span className="font-semibold">
+                        {formatCurrency(user.expenses.totalAmount)}
+                      </span>
+                    </div>
+                  </div>
                   <div className="flex items-center justify-between p-3 rounded-lg bg-background">
                     <span className="text-sm text-muted-foreground">
-                      Total Amount
+                      Net Amount
                     </span>
                     <span className="font-semibold">
-                      {formatCurrency(user.sales.totalAmount)}
+                      {formatCurrency(user.net.totalAmount)}
                     </span>
                   </div>
                 </CardContent>

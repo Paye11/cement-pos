@@ -45,6 +45,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { UserInventoryManagement } from "@/components/admin/user-inventory-management";
+import { UserExpenseManagement } from "@/components/admin/user-expense-management";
 
 interface User {
   id: string;
@@ -347,6 +348,7 @@ export default function UsersPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Username</TableHead>
                   <TableHead>Inventory</TableHead>
+                  <TableHead>Expenses</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -359,6 +361,9 @@ export default function UsersPage() {
                     <TableCell>@{user.username}</TableCell>
                     <TableCell>
                       <UserInventoryManagement userId={user.id} userName={user.name} />
+                    </TableCell>
+                    <TableCell>
+                      <UserExpenseManagement userId={user.id} userName={user.name} />
                     </TableCell>
                     <TableCell>
                       <Badge

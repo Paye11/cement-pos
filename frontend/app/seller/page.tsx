@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -20,10 +22,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/format";
+import { toast } from "sonner";
 
 interface DashboardStats {
   pendingCount: number;
@@ -44,6 +55,14 @@ interface DashboardStats {
     createdAt: string;
     rejectionReason?: string;
   }>;
+  expenses?: {
+    amount: { "42.5": number; "32.5": number };
+    totalAmount: number;
+  };
+  net?: {
+    amount: { "42.5": number; "32.5": number };
+    totalAmount: number;
+  };
 }
 
 interface Price {
@@ -51,17 +70,40 @@ interface Price {
   pricePerBag: number;
 }
 
+interface ExpenseItem {
+  id: string;
+  cementType: "42.5" | "32.5";
+  amount: number;
+  note?: string;
+  createdAt: string;
+}
+
+interface ExpenseSummary {
+  sales: { "42.5": number; "32.5": number };
+  expenses: { "42.5": number; "32.5": number };
+  remaining: { "42.5": number; "32.5": number };
+}
+
 export default function SellerDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [prices, setPrices] = useState<Price[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
+  const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
+  const [expenseForm, setExpenseForm] = useState({
+    cementType: "42.5" as "42.5" | "32.5",
+    amountDollars: "",
+    note: "",
+  });
+  const [isSavingExpense, setIsSavingExpense] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [statsRes, pricesRes] = await Promise.all([
+        const [statsRes, pricesRes, expensesRes] = await Promise.all([
           fetch("/api/stats/dashboard"),
           fetch("/api/prices"),
+          fetch("/api/expenses?limit=10"),
         ]);
 
         if (statsRes.ok) {
@@ -73,6 +115,12 @@ export default function SellerDashboard() {
           const pricesData = await pricesRes.json();
           setPrices(pricesData.prices);
         }
+
+        if (expensesRes.ok) {
+          const expensesData = await expensesRes.json();
+          setExpenses(expensesData.expenses || []);
+          setExpenseSummary(expensesData.summary || null);
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -82,6 +130,61 @@ export default function SellerDashboard() {
 
     fetchData();
   }, []);
+
+  const refreshExpenses = async () => {
+    const res = await fetch("/api/expenses?limit=10");
+    if (!res.ok) return;
+    const data = await res.json();
+    setExpenses(data.expenses || []);
+    setExpenseSummary(data.summary || null);
+  };
+
+  const handleCreateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amountNumber = Number(expenseForm.amountDollars);
+    if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
+      toast.error("Enter a valid expense amount");
+      return;
+    }
+
+    const amountCents = Math.round(amountNumber * 100);
+    if (amountCents < 1) {
+      toast.error("Enter a valid expense amount");
+      return;
+    }
+
+    setIsSavingExpense(true);
+    try {
+      const response = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cementType: expenseForm.cementType,
+          amount: amountCents,
+          note: expenseForm.note,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to save expense");
+        return;
+      }
+
+      toast.success("Expense recorded");
+      setExpenseForm((prev) => ({ ...prev, amountDollars: "", note: "" }));
+      setExpenseSummary(data.summary || null);
+      await refreshExpenses();
+      const statsRes = await fetch("/api/stats/dashboard");
+      if (statsRes.ok) {
+        setStats(await statsRes.json());
+      }
+    } catch {
+      toast.error("Failed to save expense");
+    } finally {
+      setIsSavingExpense(false);
+    }
+  };
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -143,6 +246,120 @@ export default function SellerDashboard() {
           variant={stats.pendingCount > 0 ? "warning" : "default"}
         />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-medium">Expenses</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="p-3 rounded-lg bg-muted/30">
+              <p className="text-sm text-muted-foreground">Available (Cement 42.5)</p>
+              <p className="text-lg font-semibold">
+                {formatCurrency(expenseSummary?.remaining["42.5"] || 0)}
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30">
+              <p className="text-sm text-muted-foreground">Available (Cement 32.5)</p>
+              <p className="text-lg font-semibold">
+                {formatCurrency(expenseSummary?.remaining["32.5"] || 0)}
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30">
+              <p className="text-sm text-muted-foreground">Total Net</p>
+              <p className="text-lg font-semibold">
+                {formatCurrency(stats.net?.totalAmount || 0)}
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleCreateExpense} className="grid gap-4 md:grid-cols-4">
+            <div className="flex flex-col gap-2">
+              <Label>Cement Type</Label>
+              <Select
+                value={expenseForm.cementType}
+                onValueChange={(value) =>
+                  setExpenseForm((prev) => ({
+                    ...prev,
+                    cementType: value as "42.5" | "32.5",
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select cement type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="42.5">Cement 42.5</SelectItem>
+                  <SelectItem value="32.5">Cement 32.5</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>Amount</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={expenseForm.amountDollars}
+                onChange={(e) =>
+                  setExpenseForm((prev) => ({ ...prev, amountDollars: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <Label>Note (optional)</Label>
+              <Textarea
+                value={expenseForm.note}
+                onChange={(e) => setExpenseForm((prev) => ({ ...prev, note: e.target.value }))}
+              />
+            </div>
+
+            <div className="md:col-span-4">
+              <Button type="submit" disabled={isSavingExpense}>
+                {isSavingExpense ? "Saving..." : "Add Expense"}
+              </Button>
+            </div>
+          </form>
+
+          <div>
+            <p className="text-sm font-medium mb-3">Recent Expenses</p>
+            {expenses.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Cement Type</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {expenses.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="text-muted-foreground">
+                        {formatDateTime(item.createdAt)}
+                      </TableCell>
+                      <TableCell className="font-medium">Cement {item.cementType}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {item.note || "-"}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(item.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground">No expenses recorded yet</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Prices and Recent Sales */}
       <div className="grid gap-6 md:grid-cols-2">

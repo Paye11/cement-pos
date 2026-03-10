@@ -104,4 +104,7 @@ async function main() {
         process.stdout.write(`Backend listening on http://localhost:${port}\n`);
     });
 }
-main().catch(() => process.exit(1));
+main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);
+    process.exit(1);
+});

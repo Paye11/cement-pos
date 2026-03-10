@@ -5,6 +5,8 @@ import Transaction from "@/lib/models/transaction";
 import Inventory from "@/lib/models/inventory";
 import User from "@/lib/models/user";
 import UserInventory from "@/lib/models/user-inventory";
+import Expense from "@/lib/models/expense";
+import mongoose from "mongoose";
 
 export async function GET() {
   try {
@@ -47,6 +49,7 @@ export async function GET() {
         recentTransactions,
         userInventories,
         salesBreakdown,
+        expenseBreakdown,
       ] = await Promise.all([
         Transaction.countDocuments({ status: "Pending" }),
         Transaction.find({
@@ -66,6 +69,15 @@ export async function GET() {
               _id: { userId: "$userId", cementType: "$cementType" },
               bagsSold: { $sum: "$bagsSold" },
               totalAmount: { $sum: "$totalAmount" },
+            },
+          },
+        ]),
+        Expense.aggregate([
+          { $match: { userId: { $in: userIds } } },
+          {
+            $group: {
+              _id: { userId: "$userId", cementType: "$cementType" },
+              totalAmount: { $sum: "$amount" },
             },
           },
         ]),
@@ -97,6 +109,19 @@ export async function GET() {
             amount: { "42.5": number; "32.5": number };
           }
         >
+      );
+
+      const expensesMap = expenseBreakdown.reduce(
+        (acc, row) => {
+          const userId = row._id.userId.toString();
+          const cementType = row._id.cementType as "42.5" | "32.5";
+          if (!acc[userId]) {
+            acc[userId] = { amount: { "42.5": 0, "32.5": 0 } };
+          }
+          acc[userId].amount[cementType] = row.totalAmount;
+          return acc;
+        },
+        {} as Record<string, { amount: { "42.5": number; "32.5": number } }>
       );
 
       const inventoryMapByUser = userInventories.reduce(
@@ -132,6 +157,11 @@ export async function GET() {
           bagsSold: { "42.5": 0, "32.5": 0 },
           amount: { "42.5": 0, "32.5": 0 },
         };
+        const expenses = expensesMap[userId] ?? {
+          amount: { "42.5": 0, "32.5": 0 },
+        };
+        const totalExpenses = expenses.amount["42.5"] + expenses.amount["32.5"];
+        const totalSales = sales.amount["42.5"] + sales.amount["32.5"];
 
         return {
           id: userId,
@@ -145,7 +175,18 @@ export async function GET() {
           sales: {
             bagsSold: sales.bagsSold,
             amount: sales.amount,
-            totalAmount: sales.amount["42.5"] + sales.amount["32.5"],
+            totalAmount: totalSales,
+          },
+          expenses: {
+            amount: expenses.amount,
+            totalAmount: totalExpenses,
+          },
+          net: {
+            amount: {
+              "42.5": sales.amount["42.5"] - expenses.amount["42.5"],
+              "32.5": sales.amount["32.5"] - expenses.amount["32.5"],
+            },
+            totalAmount: totalSales - totalExpenses,
           },
         };
       });
@@ -202,6 +243,27 @@ export async function GET() {
           UserInventory.find({ userId: session.userId }),
         ]);
 
+      const userObjectId = new mongoose.Types.ObjectId(session.userId);
+      const [userSalesByType, userExpensesByType] = await Promise.all([
+        Transaction.aggregate([
+          { $match: { status: "Approved", userId: userObjectId } },
+          { $group: { _id: "$cementType", totalAmount: { $sum: "$totalAmount" } } },
+        ]),
+        Expense.aggregate([
+          { $match: { userId: userObjectId } },
+          { $group: { _id: "$cementType", totalAmount: { $sum: "$amount" } } },
+        ]),
+      ]);
+
+      const salesAmount = { "42.5": 0, "32.5": 0 };
+      for (const row of userSalesByType as Array<{ _id: "42.5" | "32.5"; totalAmount: number }>) {
+        if (row._id === "42.5" || row._id === "32.5") salesAmount[row._id] = row.totalAmount;
+      }
+      const expenseAmount = { "42.5": 0, "32.5": 0 };
+      for (const row of userExpensesByType as Array<{ _id: "42.5" | "32.5"; totalAmount: number }>) {
+        if (row._id === "42.5" || row._id === "32.5") expenseAmount[row._id] = row.totalAmount;
+      }
+
       const todaySales = userTransactions.filter(
         (t) => t.createdAt >= today && t.status === "Approved"
       );
@@ -234,6 +296,20 @@ export async function GET() {
         todayBags,
         todayRevenue,
         inventory,
+        expenses: {
+          amount: expenseAmount,
+          totalAmount: expenseAmount["42.5"] + expenseAmount["32.5"],
+        },
+        net: {
+          amount: {
+            "42.5": salesAmount["42.5"] - expenseAmount["42.5"],
+            "32.5": salesAmount["32.5"] - expenseAmount["32.5"],
+          },
+          totalAmount:
+            salesAmount["42.5"] +
+            salesAmount["32.5"] -
+            (expenseAmount["42.5"] + expenseAmount["32.5"]),
+        },
         recentTransactions: userTransactions.map((t) => ({
           id: t._id.toString(),
           cementType: t.cementType,
