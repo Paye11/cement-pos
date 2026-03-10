@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { type Request, type Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
@@ -23,12 +23,12 @@ app.use(
   })
 );
 
-app.get("/health", async (_req, res) => {
+app.get("/health", async (_req: Request, res: Response) => {
   const isConnected = mongoose.connection.readyState === 1;
   res.json({ ok: true, db: isConnected ? "connected" : "disconnected" });
 });
 
-app.post("/auth/login", async (req, res) => {
+app.post("/auth/login", async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body as {
       username?: string;
@@ -88,7 +88,7 @@ app.post("/auth/login", async (req, res) => {
   }
 });
 
-app.post("/auth/logout", (_req, res) => {
+app.post("/auth/logout", (_req: Request, res: Response) => {
   res.clearCookie("auth-token", {
     path: "/",
     secure: isProd,
@@ -97,7 +97,7 @@ app.post("/auth/logout", (_req, res) => {
   res.json({ success: true });
 });
 
-app.get("/auth/me", requireAuth, (req, res) => {
+app.get("/auth/me", requireAuth, (req: Request, res: Response) => {
   const session = (req as unknown as { session: { userId: string; username: string; role: string; name: string } }).session;
   res.json({
     user: {
@@ -109,7 +109,7 @@ app.get("/auth/me", requireAuth, (req, res) => {
   });
 });
 
-app.get("/admin/health", requireAdmin, (_req, res) => {
+app.get("/admin/health", requireAdmin, (_req: Request, res: Response) => {
   res.json({ ok: true });
 });
 

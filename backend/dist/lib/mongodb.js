@@ -63,7 +63,7 @@ async function connectToDatabase() {
     }
     if (!cached.promise) {
         cached.promise = mongoose_1.default
-            .connect(MONGODB_URI, { bufferCommands: false })
+            .connect(MONGODB_URI)
             .then((m) => m);
     }
     cached.conn = await cached.promise;
