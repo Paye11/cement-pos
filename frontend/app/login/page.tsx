@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Package } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +53,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-primary mb-4">
-            <Package className="w-8 h-8 text-primary-foreground" />
+            <Image src="/family_tree.png" alt="Family Tree Inc" width={64} height={64} />
           </div>
           <h1 className="text-2xl font-semibold text-foreground">Family Tree Inc</h1>
           <p className="text-muted-foreground mt-1">Cemenco Cement Sellers</p>
