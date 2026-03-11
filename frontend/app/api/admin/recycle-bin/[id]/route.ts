@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, isAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/lib/models/user";
+import Transaction from "@/lib/models/transaction";
+import Expense from "@/lib/models/expense";
+import UserInventory from "@/lib/models/user-inventory";
 
 export async function DELETE(
   _request: NextRequest,
@@ -33,7 +36,12 @@ export async function DELETE(
       );
     }
 
-    await User.findByIdAndDelete(id);
+    await Promise.all([
+      Transaction.deleteMany({ userId: user._id }),
+      Expense.deleteMany({ userId: user._id }),
+      UserInventory.deleteMany({ userId: user._id }),
+      User.findByIdAndDelete(id),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

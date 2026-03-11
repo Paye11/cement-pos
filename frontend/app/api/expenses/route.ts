@@ -24,7 +24,7 @@ async function getUserSalesAndExpensesByType(userId: string) {
   const objectId = new mongoose.Types.ObjectId(userId);
   const [salesAgg, expenseAgg] = await Promise.all([
     Transaction.aggregate([
-      { $match: { status: "Approved", userId: objectId } },
+      { $match: { status: "Approved", userId: objectId, deletedAt: null } },
       {
         $group: {
           _id: "$cementType",
@@ -33,7 +33,7 @@ async function getUserSalesAndExpensesByType(userId: string) {
       },
     ]),
     Expense.aggregate([
-      { $match: { userId: objectId } },
+      { $match: { userId: objectId, deletedAt: null } },
       {
         $group: {
           _id: "$cementType",
@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
     } else if (!isAdmin(session)) {
       query.userId = session.userId;
     }
+    query.deletedAt = null;
 
     const expenses = await Expense.find(query).sort({ createdAt: -1 }).limit(limit);
 
@@ -153,6 +154,7 @@ export async function POST(request: NextRequest) {
       cementType,
       amount,
       note: note || undefined,
+      deletedAt: null,
     });
 
     return NextResponse.json({

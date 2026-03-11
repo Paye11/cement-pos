@@ -24,11 +24,11 @@ export async function GET(request: Request) {
     const userId = searchParams.get("userId");
 
     if (userId) {
-      const inventory = await UserInventory.find({ userId });
+      const inventory = await UserInventory.find({ userId, deletedAt: null });
       return NextResponse.json({ inventory });
     }
 
-    const inventory = await UserInventory.find().populate("userId", "name username");
+    const inventory = await UserInventory.find({ deletedAt: null }).populate("userId", "name username");
     return NextResponse.json({ inventory });
   } catch (error) {
     console.error("Error fetching user inventory:", error);
@@ -76,8 +76,11 @@ export async function POST(request: Request) {
     if (!user || user.role !== "user") {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+    if (user.deletedAt) {
+      return NextResponse.json({ error: "User is in Recycle Bin" }, { status: 400 });
+    }
 
-    let inventory = await UserInventory.findOne({ userId, cementType });
+    let inventory = await UserInventory.findOne({ userId, cementType, deletedAt: null });
 
     if (!inventory) {
       if (action === "remove") {
@@ -88,6 +91,7 @@ export async function POST(request: Request) {
         cementType,
         totalAssigned: 0,
         remainingStock: 0,
+        deletedAt: null,
       });
     }
 

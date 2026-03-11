@@ -28,6 +28,13 @@ export async function POST(
       );
     }
 
+    if (transaction.deletedAt) {
+      return NextResponse.json(
+        { error: "Transaction is not available" },
+        { status: 400 }
+      );
+    }
+
     if (transaction.status !== "Pending") {
       return NextResponse.json(
         { error: "Transaction has already been processed" },

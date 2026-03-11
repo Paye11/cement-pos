@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, isAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/lib/models/user";
+import Transaction from "@/lib/models/transaction";
+import Expense from "@/lib/models/expense";
+import UserInventory from "@/lib/models/user-inventory";
 
 export async function GET() {
   try {
@@ -69,6 +72,12 @@ export async function POST(request: NextRequest) {
     user.status = restoreStatus;
     await user.save();
 
+    await Promise.all([
+      Transaction.updateMany({ userId: user._id }, { $set: { deletedAt: null } }),
+      Expense.updateMany({ userId: user._id }, { $set: { deletedAt: null } }),
+      UserInventory.updateMany({ userId: user._id }, { $set: { deletedAt: null } }),
+    ]);
+
     return NextResponse.json({
       success: true,
       user: {
@@ -85,4 +94,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to restore user" }, { status: 500 });
   }
 }
-

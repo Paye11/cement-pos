@@ -14,6 +14,7 @@ export interface ITransaction extends Document {
   rejectionReason?: string;
   approvedBy?: mongoose.Types.ObjectId;
   approvalDate?: Date;
+  deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +61,10 @@ const TransactionSchema = new Schema<ITransaction>(
     },
     approvalDate: {
       type: Date,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

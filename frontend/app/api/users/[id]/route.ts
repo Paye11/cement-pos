@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, isAdmin, hashPassword } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/lib/models/user";
+import Transaction from "@/lib/models/transaction";
+import Expense from "@/lib/models/expense";
+import UserInventory from "@/lib/models/user-inventory";
 
 export async function PUT(
   request: NextRequest,
@@ -131,6 +134,12 @@ export async function DELETE(
     user.deletedStatus = user.status;
     user.status = "inactive";
     await user.save();
+
+    await Promise.all([
+      Transaction.updateMany({ userId: user._id }, { $set: { deletedAt: user.deletedAt } }),
+      Expense.updateMany({ userId: user._id }, { $set: { deletedAt: user.deletedAt } }),
+      UserInventory.updateMany({ userId: user._id }, { $set: { deletedAt: user.deletedAt } }),
+    ]);
 
     return NextResponse.json({
       success: true,

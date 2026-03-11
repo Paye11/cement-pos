@@ -7,6 +7,7 @@ export interface IExpense extends Document {
   cementType: CementType;
   amount: number;
   note?: string;
+  deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +33,10 @@ const ExpenseSchema = new Schema<IExpense>(
       type: String,
       trim: true,
       maxlength: [200, "Note cannot exceed 200 characters"],
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }

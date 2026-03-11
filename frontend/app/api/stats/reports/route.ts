@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, isAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/lib/models/transaction";
+import User from "@/lib/models/user";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,6 +33,11 @@ export async function GET(request: NextRequest) {
     if (Object.keys(dateFilter).length > 0) {
       query.createdAt = dateFilter;
     }
+    query.deletedAt = null;
+
+    const users = await User.find({ role: "user", deletedAt: null }).select("_id name username");
+    const userIds = users.map((u) => u._id);
+    query.userId = { $in: userIds };
 
     const transactions = await Transaction.find(query)
       .populate("userId", "name username")

@@ -8,6 +8,7 @@ export interface IUserInventory extends Document {
   cementType: CementType;
   totalAssigned: number;
   remainingStock: number;
+  deletedAt?: Date | null;
   updatedAt: Date;
   createdAt: Date;
 }
@@ -35,6 +36,10 @@ const UserInventorySchema = new Schema<IUserInventory>(
       required: true,
       default: 0,
       min: [0, "Remaining stock cannot be negative"],
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

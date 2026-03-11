@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Build query
     const query: Record<string, unknown> = {};
+    query.deletedAt = null;
 
     // Users can only see their own transactions
     if (!isAdmin(session)) {
@@ -162,6 +163,7 @@ export async function POST(request: NextRequest) {
       pricePerBag: price.pricePerBag,
       totalAmount,
       status: "Pending",
+      deletedAt: null,
     });
 
     // Deduct from user inventory immediately (or reserve it)

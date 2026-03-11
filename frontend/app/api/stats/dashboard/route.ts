@@ -39,7 +39,7 @@ export async function GET() {
     );
 
     if (isAdminUser) {
-      const users = await User.find({ role: "user" }).select("name username");
+      const users = await User.find({ role: "user", deletedAt: null }).select("name username");
       const userIds = users.map((u) => u._id);
 
       const [
@@ -51,19 +51,21 @@ export async function GET() {
         salesBreakdown,
         expenseBreakdown,
       ] = await Promise.all([
-        Transaction.countDocuments({ status: "Pending" }),
+        Transaction.countDocuments({ status: "Pending", userId: { $in: userIds }, deletedAt: null }),
         Transaction.find({
           status: "Approved",
           createdAt: { $gte: today },
+          userId: { $in: userIds },
+          deletedAt: null,
         }),
-        Transaction.find({ status: "Approved" }),
-        Transaction.find({})
+        Transaction.find({ status: "Approved", userId: { $in: userIds }, deletedAt: null }),
+        Transaction.find({ userId: { $in: userIds }, deletedAt: null })
           .sort({ createdAt: -1 })
           .limit(10)
           .populate("userId", "name username"),
-        UserInventory.find({ userId: { $in: userIds } }),
+        UserInventory.find({ userId: { $in: userIds }, deletedAt: null }),
         Transaction.aggregate([
-          { $match: { status: "Approved", userId: { $in: userIds } } },
+          { $match: { status: "Approved", userId: { $in: userIds }, deletedAt: null } },
           {
             $group: {
               _id: { userId: "$userId", cementType: "$cementType" },
@@ -73,7 +75,7 @@ export async function GET() {
           },
         ]),
         Expense.aggregate([
-          { $match: { userId: { $in: userIds } } },
+          { $match: { userId: { $in: userIds }, deletedAt: null } },
           {
             $group: {
               _id: { userId: "$userId", cementType: "$cementType" },
@@ -246,11 +248,11 @@ export async function GET() {
       const userObjectId = new mongoose.Types.ObjectId(session.userId);
       const [userSalesByType, userExpensesByType] = await Promise.all([
         Transaction.aggregate([
-          { $match: { status: "Approved", userId: userObjectId } },
+          { $match: { status: "Approved", userId: userObjectId, deletedAt: null } },
           { $group: { _id: "$cementType", totalAmount: { $sum: "$totalAmount" } } },
         ]),
         Expense.aggregate([
-          { $match: { userId: userObjectId } },
+          { $match: { userId: userObjectId, deletedAt: null } },
           { $group: { _id: "$cementType", totalAmount: { $sum: "$amount" } } },
         ]),
       ]);
