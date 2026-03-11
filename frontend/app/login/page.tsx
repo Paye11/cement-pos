@@ -55,8 +55,8 @@ export default function LoginPage() {
           <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-primary mb-4">
             <Image src="/family_tree.png" alt="Family Tree Inc" width={64} height={64} />
           </div>
-          <h1 className="text-2xl font-semibold text-foreground">Family Tree Inc</h1>
-          <p className="text-muted-foreground mt-1">Cemenco Cement Sellers</p>
+          <h1 className="text-2xl font-semibold text-foreground">Family Tree Business Inc</h1>
+          <p className="text-muted-foreground mt-1">Cemenco Cement Distributor</p>
         </div>
 
         <Card className="border-border shadow-lg">
