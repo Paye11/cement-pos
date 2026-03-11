@@ -55,8 +55,8 @@ export default function LoginPage() {
           <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-primary mb-4">
             <Package className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-semibold text-foreground">Cement Store POS</h1>
-          <p className="text-muted-foreground mt-1">Point of Sale System</p>
+          <h1 className="text-2xl font-semibold text-foreground">Family Tree Inc</h1>
+          <p className="text-muted-foreground mt-1">Cemenco Cement Sellers</p>
         </div>
 
         <Card className="border-border shadow-lg">
