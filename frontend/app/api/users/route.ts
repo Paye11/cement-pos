@@ -15,7 +15,7 @@ export async function GET() {
 
     await connectToDatabase();
 
-    const users = await User.find({ role: "user" })
+    const users = await User.find({ role: "user", deletedAt: null })
       .select("-password")
       .sort({ createdAt: -1 });
 
@@ -135,6 +135,12 @@ export async function POST(request: NextRequest) {
       username: username.toLowerCase().trim(),
     });
     if (existingUser) {
+      if (existingUser.deletedAt) {
+        return NextResponse.json(
+          { error: "A deleted user already has this username. Restore the user from Recycle Bin or choose a different username." },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         { error: "Username already exists" },
         { status: 400 }

@@ -7,6 +7,8 @@ export interface IUser extends Document {
   password: string;
   role: "admin" | "user";
   status: "active" | "inactive";
+  deletedAt?: Date | null;
+  deletedStatus?: "active" | "inactive" | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +44,15 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ["active", "inactive"],
       default: "active",
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedStatus: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: null,
     },
   },
   {

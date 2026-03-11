@@ -11,6 +11,7 @@ import {
   BarChart3,
   LogOut,
   Package2,
+  Trash2,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,11 @@ const navItems = [
     title: "User Management",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    title: "Recycle Bin",
+    href: "/admin/recycle-bin",
+    icon: Trash2,
   },
   {
     title: "Price Management",

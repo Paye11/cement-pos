@@ -33,6 +33,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (user.deletedAt) {
+      return NextResponse.json(
+        { error: "Your account has been deleted. Please contact an administrator." },
+        { status: 403 }
+      );
+    }
+
     if (user.status === "inactive") {
       return NextResponse.json(
         { error: "Your account has been deactivated. Please contact an administrator." },

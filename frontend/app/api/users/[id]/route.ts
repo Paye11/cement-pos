@@ -26,6 +26,13 @@ export async function PUT(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    if (user.deletedAt) {
+      return NextResponse.json(
+        { error: "Cannot edit a deleted user. Restore the user from Recycle Bin first." },
+        { status: 400 }
+      );
+    }
+
     // Don't allow editing admin users
     if (user.role === "admin") {
       return NextResponse.json(
@@ -105,6 +112,13 @@ export async function DELETE(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    if (user.deletedAt) {
+      return NextResponse.json(
+        { error: "User is already in Recycle Bin" },
+        { status: 400 }
+      );
+    }
+
     // Don't allow deleting admin users
     if (user.role === "admin") {
       return NextResponse.json(
@@ -113,11 +127,14 @@ export async function DELETE(
       );
     }
 
-    await User.findByIdAndDelete(id);
+    user.deletedAt = new Date();
+    user.deletedStatus = user.status;
+    user.status = "inactive";
+    await user.save();
 
     return NextResponse.json({
       success: true,
-      message: "User deleted successfully",
+      message: "User moved to Recycle Bin",
     });
   } catch (error) {
     console.error("Delete user error:", error);
