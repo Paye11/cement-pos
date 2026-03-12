@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Plus, Loader2 } from "lucide-react";
+import { Package, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatNumber, formatDateTime } from "@/lib/format";
@@ -39,6 +49,23 @@ export default function InventoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [distribution, setDistribution] = useState<Record<"42.5" | "32.5", number>>({
+    "42.5": 0,
+    "32.5": 0,
+  });
+  const [editDialog, setEditDialog] = useState<{
+    open: boolean;
+    cementType: "42.5" | "32.5" | null;
+  }>({ open: false, cementType: null });
+  const [editForm, setEditForm] = useState({
+    totalStock: "",
+    remainingStock: "",
+  });
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    cementType: "42.5" | "32.5" | null;
+  }>({ open: false, cementType: null });
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     cementType: "42.5",
     quantity: "",
@@ -46,10 +73,17 @@ export default function InventoryPage() {
 
   const fetchInventory = async () => {
     try {
-      const response = await fetch("/api/inventory");
-      if (response.ok) {
-        const data = await response.json();
+      const [invRes, summaryRes] = await Promise.all([
+        fetch("/api/inventory"),
+        fetch("/api/admin/inventory-summary"),
+      ]);
+      if (invRes.ok) {
+        const data = await invRes.json();
         setInventory(data.inventory);
+      }
+      if (summaryRes.ok) {
+        const data = await summaryRes.json();
+        setDistribution(data.distribution || { "42.5": 0, "32.5": 0 });
       }
     } catch (error) {
       console.error("Failed to fetch inventory:", error);
@@ -109,6 +143,85 @@ export default function InventoryPage() {
       toast.error("Failed to add stock");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const openEdit = (inv: Inventory) => {
+    const cementType = inv.cementType as "42.5" | "32.5";
+    setEditForm({
+      totalStock: String(inv.totalStock),
+      remainingStock: String(inv.remainingStock),
+    });
+    setEditDialog({ open: true, cementType });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editDialog.cementType) return;
+    const cementType = editDialog.cementType;
+    const totalStock = Number(editForm.totalStock);
+    const remainingStock = Number(editForm.remainingStock);
+    if (!Number.isFinite(totalStock) || !Number.isFinite(remainingStock)) {
+      toast.error("Enter valid numbers");
+      return;
+    }
+    if (totalStock < 0 || remainingStock < 0) {
+      toast.error("Stock cannot be negative");
+      return;
+    }
+    if (remainingStock > totalStock) {
+      toast.error("Remaining stock cannot exceed total stock");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/inventory/${cementType}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          totalStock: Math.floor(totalStock),
+          remainingStock: Math.floor(remainingStock),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast.error(data.error || "Failed to update stock");
+        return;
+      }
+
+      setInventory((prev) =>
+        prev.map((i) => (i.cementType === cementType ? data.inventory : i))
+      );
+      toast.success(`Updated Cement ${cementType} stock`);
+      setEditDialog({ open: false, cementType: null });
+    } catch {
+      toast.error("Failed to update stock");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDialog.cementType) return;
+    const cementType = deleteDialog.cementType;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/inventory/${cementType}`, {
+        method: "DELETE",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast.error(data.error || "Failed to delete");
+        return;
+      }
+      setInventory((prev) => prev.filter((i) => i.cementType !== cementType));
+      toast.success(`Deleted Cement ${cementType} inventory`);
+      setDeleteDialog({ open: false, cementType: null });
+    } catch {
+      toast.error("Failed to delete");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -217,6 +330,9 @@ export default function InventoryPage() {
             inv.totalStock > 0
               ? (inv.remainingStock / inv.totalStock) * 100
               : 0;
+          const distributedForType =
+            distribution[(inv.cementType as "42.5" | "32.5") ?? "42.5"] || 0;
+          const canDelete = distributedForType === 0;
 
           return (
             <Card key={inv.cementType}>
@@ -247,6 +363,36 @@ export default function InventoryPage() {
                   >
                     {status.label}
                   </span>
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEdit(inv)}
+                    disabled={isSubmitting || isDeleting}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() =>
+                      canDelete
+                        ? setDeleteDialog({
+                            open: true,
+                            cementType: inv.cementType as "42.5" | "32.5",
+                          })
+                        : toast.error(
+                            `Cannot delete Cement ${inv.cementType} because stock has been distributed to users`
+                          )
+                    }
+                    disabled={isSubmitting || isDeleting}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -287,6 +433,22 @@ export default function InventoryPage() {
                       </p>
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Distributed</p>
+                      <p className="text-lg font-semibold">
+                        {formatNumber(distributedForType)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Deletable
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {canDelete ? "Yes" : "No"}
+                      </p>
+                    </div>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Last updated: {formatDateTime(inv.updatedAt)}
                   </p>
@@ -315,6 +477,79 @@ export default function InventoryPage() {
           </Card>
         )}
       </div>
+
+      <Dialog
+        open={editDialog.open}
+        onOpenChange={(open) =>
+          setEditDialog({ open, cementType: open ? editDialog.cementType : null })
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Stock</DialogTitle>
+            <DialogDescription>
+              Update total and remaining stock. Deleting is disabled if stock is distributed to users.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>Total Stock</Label>
+              <Input
+                type="number"
+                min="0"
+                value={editForm.totalStock}
+                onChange={(e) => setEditForm((p) => ({ ...p, totalStock: e.target.value }))}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Remaining Stock</Label>
+              <Input
+                type="number"
+                min="0"
+                value={editForm.remainingStock}
+                onChange={(e) =>
+                  setEditForm((p) => ({ ...p, remainingStock: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialog({ open: false, cementType: null })}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) =>
+          setDeleteDialog({ open, cementType: open ? deleteDialog.cementType : null })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete inventory?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the cement inventory record. You can add it again later. You cannot delete if stock has been distributed to users.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
