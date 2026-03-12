@@ -3,6 +3,7 @@ import { getSession, isAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/lib/models/transaction";
 import User from "@/lib/models/user";
+import Payroll from "@/lib/models/payroll";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,6 +44,25 @@ export async function GET(request: NextRequest) {
       .populate("userId", "name username")
       .sort({ createdAt: -1 });
 
+    const payrollQuery: Record<string, unknown> = {
+      deletedAt: null,
+      status: "Approved",
+      userId: { $in: userIds },
+    };
+
+    const payroll = await Payroll.find(payrollQuery).populate("userId", "name username");
+
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    if (end) end.setHours(23, 59, 59, 999);
+
+    const filteredPayroll = payroll.filter((p) => {
+      const period = new Date(p.year, p.month - 1, 1);
+      if (start && period < start) return false;
+      if (end && period > end) return false;
+      return true;
+    });
+
     // Aggregate by cement type
     const byCementType: Record<
       string,
@@ -50,7 +70,13 @@ export async function GET(request: NextRequest) {
     > = {};
     const byUser: Record<
       string,
-      { name: string; bags: number; revenue: number; count: number }
+      {
+        name: string;
+        bags: number;
+        revenue: number;
+        count: number;
+        payroll: number;
+      }
     > = {};
     const byDate: Record<string, { bags: number; revenue: number }> = {};
 
@@ -68,7 +94,7 @@ export async function GET(request: NextRequest) {
       const userName =
         (t.userId as unknown as { name: string })?.name || "Unknown";
       if (!byUser[userId]) {
-        byUser[userId] = { name: userName, bags: 0, revenue: 0, count: 0 };
+        byUser[userId] = { name: userName, bags: 0, revenue: 0, count: 0, payroll: 0 };
       }
       byUser[userId].bags += t.bagsSold;
       byUser[userId].revenue += t.totalAmount;
@@ -87,12 +113,25 @@ export async function GET(request: NextRequest) {
     const totalBags = transactions.reduce((sum, t) => sum + t.bagsSold, 0);
     const totalRevenue = transactions.reduce((sum, t) => sum + t.totalAmount, 0);
     const totalTransactions = transactions.length;
+    const payrollByUser = filteredPayroll.reduce((acc, p) => {
+      const id = p.userId?._id?.toString() || "unknown";
+      acc[id] = (acc[id] || 0) + p.amount;
+      return acc;
+    }, {} as Record<string, number>);
+    const totalPayroll = filteredPayroll.reduce((sum, p) => sum + p.amount, 0);
+    const netRevenue = totalRevenue - totalPayroll;
+
+    Object.keys(byUser).forEach((id) => {
+      byUser[id].payroll = payrollByUser[id] || 0;
+    });
 
     return NextResponse.json({
       summary: {
         totalBags,
         totalRevenue,
         totalTransactions,
+        totalPayroll,
+        netRevenue,
       },
       byCementType: Object.entries(byCementType).map(([type, data]) => ({
         cementType: type,
@@ -102,8 +141,9 @@ export async function GET(request: NextRequest) {
         .map(([id, data]) => ({
           userId: id,
           ...data,
+          netRevenue: data.revenue - data.payroll,
         }))
-        .sort((a, b) => b.revenue - a.revenue),
+        .sort((a, b) => b.netRevenue - a.netRevenue),
       byDate: Object.entries(byDate)
         .map(([date, data]) => ({
           date,

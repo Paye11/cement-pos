@@ -67,6 +67,11 @@ const navItems = [
     href: "/admin/reports",
     icon: BarChart3,
   },
+  {
+    title: "Payroll",
+    href: "/admin/payroll",
+    icon: DollarSign,
+  },
 ];
 
 export default function AdminLayout({

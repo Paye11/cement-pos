@@ -36,6 +36,8 @@ interface ReportData {
     totalBags: number;
     totalRevenue: number;
     totalTransactions: number;
+    totalPayroll: number;
+    netRevenue: number;
   };
   byCementType: Array<{
     cementType: string;
@@ -49,6 +51,8 @@ interface ReportData {
     bags: number;
     revenue: number;
     count: number;
+    payroll: number;
+    netRevenue: number;
   }>;
   byDate: Array<{
     date: string;
@@ -182,7 +186,7 @@ export default function ReportsPage() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Revenue</CardDescription>
@@ -193,6 +197,32 @@ export default function ReportsPage() {
           <CardContent>
             <p className="text-sm text-muted-foreground">
               From {data.summary.totalTransactions} approved transactions
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total Payroll</CardDescription>
+            <CardTitle className="text-3xl">
+              {formatCurrency(data.summary.totalPayroll)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Approved payroll deducted from revenue
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Net Revenue</CardDescription>
+            <CardTitle className="text-3xl">
+              {formatCurrency(data.summary.netRevenue)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Revenue minus approved payroll
             </p>
           </CardContent>
         </Card>
@@ -341,6 +371,8 @@ export default function ReportsPage() {
                   <TableHead className="text-right">Transactions</TableHead>
                   <TableHead className="text-right">Bags Sold</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-right">Payroll</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -354,6 +386,12 @@ export default function ReportsPage() {
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(user.revenue)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(user.payroll)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(user.netRevenue)}
                     </TableCell>
                   </TableRow>
                 ))}

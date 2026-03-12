@@ -5,6 +5,7 @@ import User from "@/lib/models/user";
 import Transaction from "@/lib/models/transaction";
 import Expense from "@/lib/models/expense";
 import UserInventory from "@/lib/models/user-inventory";
+import Payroll from "@/lib/models/payroll";
 
 export async function PUT(
   request: NextRequest,
@@ -139,6 +140,7 @@ export async function DELETE(
       Transaction.updateMany({ userId: user._id }, { $set: { deletedAt: user.deletedAt } }),
       Expense.updateMany({ userId: user._id }, { $set: { deletedAt: user.deletedAt } }),
       UserInventory.updateMany({ userId: user._id }, { $set: { deletedAt: user.deletedAt } }),
+      Payroll.updateMany({ userId: user._id }, { $set: { deletedAt: user.deletedAt } }),
     ]);
 
     return NextResponse.json({
