@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -10,7 +11,6 @@ import {
   Package,
   BarChart3,
   LogOut,
-  Package2,
   Trash2,
 } from "lucide-react";
 import {
@@ -92,12 +92,12 @@ export default function AdminLayout({
       <Sidebar>
         <SidebarHeader className="border-b border-sidebar-border">
           <div className="flex items-center gap-2 px-2 py-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-sidebar-primary">
-              <Package2 className="w-4 h-4 text-sidebar-primary-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-white overflow-hidden">
+              <Image src="/family_tree.png" alt="Family Tree Business Inc" width={32} height={32} />
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-sidebar-foreground">
-                Cement Store
+                Management
               </span>
               <span className="text-xs text-sidebar-foreground/70">
                 Admin Panel
