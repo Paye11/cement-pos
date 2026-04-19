@@ -10,6 +10,7 @@ import {
   DollarSign,
   Package,
   BarChart3,
+  History,
   LogOut,
   Trash2,
 } from "lucide-react";
@@ -71,6 +72,11 @@ const navItems = [
     title: "Payroll",
     href: "/admin/payroll",
     icon: DollarSign,
+  },
+  {
+    title: "History",
+    href: "/admin/history",
+    icon: History,
   },
 ];
 

@@ -5,6 +5,7 @@ import Transaction from "@/lib/models/transaction";
 import CementPrice from "@/lib/models/cement-price";
 import Inventory from "@/lib/models/inventory";
 import UserInventory from "@/lib/models/user-inventory";
+import TransactionEvent from "@/lib/models/transaction-event";
 
 export async function GET(request: NextRequest) {
   try {
@@ -163,6 +164,17 @@ export async function POST(request: NextRequest) {
       pricePerBag: price.pricePerBag,
       totalAmount,
       status: "Pending",
+      deletedAt: null,
+    });
+
+    await TransactionEvent.create({
+      transactionId: transaction._id,
+      sellerId: session.userId,
+      cementType,
+      bagsSold,
+      totalAmount,
+      eventType: "Submitted",
+      performedBy: session.userId,
       deletedAt: null,
     });
 

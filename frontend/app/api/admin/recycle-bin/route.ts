@@ -6,6 +6,8 @@ import Transaction from "@/lib/models/transaction";
 import Expense from "@/lib/models/expense";
 import UserInventory from "@/lib/models/user-inventory";
 import Payroll from "@/lib/models/payroll";
+import StockAssignmentLog from "@/lib/models/stock-assignment-log";
+import TransactionEvent from "@/lib/models/transaction-event";
 
 export async function GET() {
   try {
@@ -78,6 +80,8 @@ export async function POST(request: NextRequest) {
       Expense.updateMany({ userId: user._id }, { $set: { deletedAt: null } }),
       UserInventory.updateMany({ userId: user._id }, { $set: { deletedAt: null } }),
       Payroll.updateMany({ userId: user._id }, { $set: { deletedAt: null } }),
+      StockAssignmentLog.updateMany({ userId: user._id }, { $set: { deletedAt: null } }),
+      TransactionEvent.updateMany({ sellerId: user._id }, { $set: { deletedAt: null } }),
     ]);
 
     return NextResponse.json({

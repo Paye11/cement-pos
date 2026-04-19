@@ -6,6 +6,8 @@ import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import User from "@/lib/models/user";
 import Inventory from "@/lib/models/inventory";
+import StockAssignmentLog from "@/lib/models/stock-assignment-log";
+import mongoose from "mongoose";
 
 export async function GET(request: Request) {
   try {
@@ -128,6 +130,15 @@ export async function POST(request: Request) {
     }
 
     await Promise.all([inventory.save(), globalInventory.save()]);
+
+    await StockAssignmentLog.create({
+      userId,
+      cementType,
+      action,
+      amount: Math.floor(amount),
+      performedBy: new mongoose.Types.ObjectId(payload.userId),
+      deletedAt: null,
+    });
 
     return NextResponse.json({ success: true, inventory });
   } catch (error) {

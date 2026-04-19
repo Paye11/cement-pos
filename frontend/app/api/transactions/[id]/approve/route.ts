@@ -3,6 +3,7 @@ import { getSession, isAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/lib/models/transaction";
 import mongoose from "mongoose";
+import TransactionEvent from "@/lib/models/transaction-event";
 
 export async function POST(
   request: NextRequest,
@@ -47,6 +48,17 @@ export async function POST(
     transaction.approvedBy = new mongoose.Types.ObjectId(session.userId);
     transaction.approvalDate = new Date();
     await transaction.save();
+
+    await TransactionEvent.create({
+      transactionId: transaction._id,
+      sellerId: transaction.userId,
+      cementType: transaction.cementType,
+      bagsSold: transaction.bagsSold,
+      totalAmount: transaction.totalAmount,
+      eventType: "Approved",
+      performedBy: session.userId,
+      deletedAt: null,
+    });
 
     return NextResponse.json({
       success: true,

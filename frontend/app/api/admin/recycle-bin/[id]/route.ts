@@ -6,6 +6,8 @@ import Transaction from "@/lib/models/transaction";
 import Expense from "@/lib/models/expense";
 import UserInventory from "@/lib/models/user-inventory";
 import Payroll from "@/lib/models/payroll";
+import StockAssignmentLog from "@/lib/models/stock-assignment-log";
+import TransactionEvent from "@/lib/models/transaction-event";
 
 export async function DELETE(
   _request: NextRequest,
@@ -42,6 +44,8 @@ export async function DELETE(
       Expense.deleteMany({ userId: user._id }),
       UserInventory.deleteMany({ userId: user._id }),
       Payroll.deleteMany({ userId: user._id }),
+      StockAssignmentLog.deleteMany({ userId: user._id }),
+      TransactionEvent.deleteMany({ sellerId: user._id }),
       User.findByIdAndDelete(id),
     ]);
 
