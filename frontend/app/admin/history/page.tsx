@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +43,8 @@ interface TxEvent {
 }
 
 export default function AdminHistoryPage() {
+  const searchParams = useSearchParams();
+  const userId = searchParams.get("userId");
   const [isLoading, setIsLoading] = useState(true);
   const [stockLogs, setStockLogs] = useState<StockLog[]>([]);
   const [events, setEvents] = useState<TxEvent[]>([]);
@@ -48,9 +52,15 @@ export default function AdminHistoryPage() {
   const fetchHistory = async () => {
     setIsLoading(true);
     try {
+      const stockParams = new URLSearchParams({ limit: "100" });
+      const txParams = new URLSearchParams({ limit: "200" });
+      if (userId) {
+        stockParams.set("userId", userId);
+        txParams.set("sellerId", userId);
+      }
       const [stockRes, eventsRes] = await Promise.all([
-        fetch("/api/admin/history/stock?limit=100"),
-        fetch("/api/admin/history/transactions?limit=200"),
+        fetch(`/api/admin/history/stock?${stockParams.toString()}`),
+        fetch(`/api/admin/history/transactions?${txParams.toString()}`),
       ]);
 
       if (stockRes.ok) {
@@ -109,7 +119,7 @@ export default function AdminHistoryPage() {
 
   useEffect(() => {
     fetchHistory();
-  }, []);
+  }, [userId]);
 
   if (isLoading) {
     return (
@@ -133,15 +143,32 @@ export default function AdminHistoryPage() {
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-5 w-5" />
-            History
-          </CardTitle>
-          <CardDescription>
-            Tracks stock assignments to sellers and sales submission/approval events.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              History
+            </CardTitle>
+            <CardDescription>
+              Tracks stock assignments to sellers and sales submission/approval events.
+            </CardDescription>
+          </div>
+          {userId ? (
+            <Button asChild variant="outline">
+              <Link href="/admin/history">Clear Filter</Link>
+            </Button>
+          ) : null}
         </CardHeader>
+        {userId ? (
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Filtered</Badge>
+              <span className="text-sm text-muted-foreground">
+                Showing history for one user
+              </span>
+            </div>
+          </CardContent>
+        ) : null}
       </Card>
 
       <Card>

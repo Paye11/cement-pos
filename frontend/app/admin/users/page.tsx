@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Plus, Pencil, Trash2, Loader2, History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -349,6 +350,7 @@ export default function UsersPage() {
                   <TableHead>Username</TableHead>
                   <TableHead>Inventory</TableHead>
                   <TableHead>Expenses</TableHead>
+                  <TableHead>History</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -364,6 +366,14 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <UserExpenseManagement userId={user.id} userName={user.name} />
+                    </TableCell>
+                    <TableCell>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/admin/history?userId=${user.id}`}>
+                          <History className="h-4 w-4 mr-2" />
+                          View
+                        </Link>
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <Badge
