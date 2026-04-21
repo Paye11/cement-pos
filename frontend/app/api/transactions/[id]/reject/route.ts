@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession, isAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/lib/models/transaction";
-import Inventory from "@/lib/models/inventory";
 import UserInventory from "@/lib/models/user-inventory";
 import mongoose from "mongoose";
 import TransactionEvent from "@/lib/models/transaction-event";
@@ -70,21 +69,12 @@ export async function POST(
     const userInventory = await UserInventory.findOne({
       userId: transaction.userId,
       cementType: transaction.cementType,
+      deletedAt: null,
     });
 
     if (userInventory) {
       userInventory.remainingStock += transaction.bagsSold;
       await userInventory.save();
-    }
-
-    // Restore stock to global inventory
-    const inventory = await Inventory.findOne({
-      cementType: transaction.cementType,
-    });
-
-    if (inventory) {
-      inventory.remainingStock += transaction.bagsSold;
-      await inventory.save();
     }
 
     return NextResponse.json({

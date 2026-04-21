@@ -3,7 +3,6 @@ import { getSession, isAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/lib/models/transaction";
 import CementPrice from "@/lib/models/cement-price";
-import Inventory from "@/lib/models/inventory";
 import UserInventory from "@/lib/models/user-inventory";
 import TransactionEvent from "@/lib/models/transaction-event";
 
@@ -129,6 +128,7 @@ export async function POST(request: NextRequest) {
     const userInventory = await UserInventory.findOne({
       userId: session.userId,
       cementType,
+      deletedAt: null,
     });
 
     if (!userInventory || userInventory.remainingStock < bagsSold) {
@@ -137,19 +137,6 @@ export async function POST(request: NextRequest) {
           error: `Insufficient user stock. You only have ${
             userInventory?.remainingStock || 0
           } bags assigned.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check global inventory (as a safety measure, though user inventory should be subset of global)
-    const inventory = await Inventory.findOne({ cementType });
-    if (!inventory || inventory.remainingStock < bagsSold) {
-      return NextResponse.json(
-        {
-          error: `Insufficient global stock. Only ${
-            inventory?.remainingStock || 0
-          } bags available in store.`,
         },
         { status: 400 }
       );
@@ -183,10 +170,6 @@ export async function POST(request: NextRequest) {
     // For now, let's assume "Pending" means "Reserved" so we deduct it.
     userInventory.remainingStock -= bagsSold;
     await userInventory.save();
-
-    // Deduct from global inventory
-    inventory.remainingStock -= bagsSold;
-    await inventory.save();
 
     return NextResponse.json({
       success: true,
