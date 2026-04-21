@@ -234,7 +234,6 @@ export default function SellerDashboard() {
           value={stats.waitingForDeliveryCount}
           icon={Package}
           description="Paid but not collected"
-          variant={stats.waitingForDeliveryCount > 0 ? "info" : "default"}
         />
         <StatCard
           title="Approved Sales"

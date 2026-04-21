@@ -140,7 +140,6 @@ export default function AdminDashboard() {
           value={stats.waitingForDeliveryCount}
           icon={Package}
           description="Paid but not collected"
-          variant={stats.waitingForDeliveryCount > 0 ? "info" : "default"}
         />
         <StatCard
           title="Today's Sales"
