@@ -38,20 +38,22 @@ import { toast } from "sonner";
 
 interface DashboardStats {
   pendingCount: number;
+  waitingForDeliveryCount: number;
   approvedCount: number;
   rejectedCount: number;
   todayBags: number;
   todayRevenue: number;
-  inventory: {
-    "42.5": { assigned: number; remaining: number };
-    "32.5": { assigned: number; remaining: number };
-  };
+  inventory: Array<{
+    cementType: string;
+    totalAssigned: number;
+    remainingStock: number;
+  }>;
   recentTransactions: Array<{
     id: string;
     cementType: string;
     bagsSold: number;
     totalAmount: number;
-    status: "Pending" | "Approved" | "Rejected";
+    status: "Pending" | "Approved" | "Rejected" | "Waiting for Delivery";
     createdAt: string;
     rejectionReason?: string;
   }>;
@@ -219,31 +221,40 @@ export default function SellerDashboard() {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
-          title="Inventory 42.5"
-          value={stats.inventory["42.5"].remaining}
-          icon={Package}
-          description={`of ${stats.inventory["42.5"].assigned} assigned`}
-        />
-        <StatCard
-          title="Inventory 32.5"
-          value={stats.inventory["32.5"].remaining}
-          icon={Package}
-          description={`of ${stats.inventory["32.5"].assigned} assigned`}
-        />
-        <StatCard
-          title="Today&apos;s Revenue"
-          value={formatCurrency(stats.todayRevenue)}
-          icon={DollarSign}
-          description={`${stats.todayBags} bags sold today`}
-        />
-        <StatCard
-          title="Pending"
+          title="Pending Approval"
           value={stats.pendingCount}
           icon={ClipboardCheck}
-          description="Awaiting approval"
+          description="Awaiting admin review"
           variant={stats.pendingCount > 0 ? "warning" : "default"}
+        />
+        <StatCard
+          title="Waiting Delivery"
+          value={stats.waitingForDeliveryCount}
+          icon={Package}
+          description="Paid but not collected"
+          variant={stats.waitingForDeliveryCount > 0 ? "info" : "default"}
+        />
+        <StatCard
+          title="Approved Sales"
+          value={stats.approvedCount}
+          icon={CheckCircle}
+          description="Successfully completed"
+          variant="success"
+        />
+        <StatCard
+          title="Rejected Sales"
+          value={stats.rejectedCount}
+          icon={XCircle}
+          description="Needs your attention"
+          variant={stats.rejectedCount > 0 ? "destructive" : "default"}
+        />
+        <StatCard
+          title="Today's Sales"
+          value={`${stats.todayBags} bags`}
+          icon={PlusCircle}
+          description={formatCurrency(stats.todayRevenue)}
         />
       </div>
 
@@ -503,8 +514,8 @@ function DashboardSkeleton() {
           <Skeleton className="h-12 w-full" />
         </CardContent>
       </Card>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {[...Array(5)].map((_, i) => (
           <Card key={i}>
             <CardHeader className="pb-2">
               <Skeleton className="h-4 w-24" />

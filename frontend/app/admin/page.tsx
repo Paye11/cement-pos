@@ -27,6 +27,7 @@ import { formatCurrency, formatDateTime } from "@/lib/format";
 
 interface DashboardStats {
   pendingCount: number;
+  waitingForDeliveryCount: number;
   todayBags: number;
   todayRevenue: number;
   totalRevenue: number;
@@ -63,7 +64,7 @@ interface DashboardStats {
     cementType: string;
     bagsSold: number;
     totalAmount: number;
-    status: "Pending" | "Approved" | "Rejected";
+    status: "Pending" | "Approved" | "Rejected" | "Waiting for Delivery";
     createdAt: string;
   }>;
 }
@@ -126,7 +127,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
           title="Pending Approvals"
           value={stats.pendingCount}
@@ -135,9 +136,16 @@ export default function AdminDashboard() {
           variant={stats.pendingCount > 0 ? "warning" : "default"}
         />
         <StatCard
+          title="Waiting Delivery"
+          value={stats.waitingForDeliveryCount}
+          icon={Package}
+          description="Paid but not collected"
+          variant={stats.waitingForDeliveryCount > 0 ? "info" : "default"}
+        />
+        <StatCard
           title="Today's Sales"
           value={`${stats.todayBags} bags`}
-          icon={Package}
+          icon={TrendingUp}
           description={formatCurrency(stats.todayRevenue)}
         />
         <StatCard
@@ -430,8 +438,8 @@ export default function AdminDashboard() {
 function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {[...Array(5)].map((_, i) => (
           <Card key={i}>
             <CardHeader className="pb-2">
               <Skeleton className="h-4 w-24" />
