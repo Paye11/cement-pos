@@ -37,7 +37,12 @@ interface Transaction {
   bagsSold: number;
   pricePerBag: number;
   totalAmount: number;
-  status: "Pending" | "Approved" | "Rejected";
+  status: "Pending" | "Approved" | "Rejected" | "Waiting for Delivery";
+  isAdvancePayment: boolean;
+  bagsDelivered: number;
+  deliveryStatus: string;
+  isNegotiatedPrice: boolean;
+  originalPricePerBag?: number;
   rejectionReason?: string;
   createdAt: string;
 }
@@ -45,6 +50,7 @@ interface Transaction {
 export default function SalesHistoryPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const fetchTransactions = async () => {
@@ -70,9 +76,31 @@ export default function SalesHistoryPage() {
     fetchTransactions();
   }, [statusFilter]);
 
+  const handleDeliver = async (id: string) => {
+    setIsProcessing(id);
+    try {
+      const response = await fetch(`/api/transactions/${id}/deliver`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        toast.success("Marked as delivered");
+        fetchTransactions();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to mark as delivered");
+      }
+    } catch {
+      toast.error("Failed to mark as delivered");
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
   const stats = {
     total: transactions.length,
     pending: transactions.filter((t) => t.status === "Pending").length,
+    waiting: transactions.filter((t) => t.status === "Waiting for Delivery").length,
     approved: transactions.filter((t) => t.status === "Approved").length,
     rejected: transactions.filter((t) => t.status === "Rejected").length,
     totalRevenue: transactions
@@ -100,7 +128,7 @@ export default function SalesHistoryPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardContent className="py-4">
             <p className="text-sm text-muted-foreground">Total Sales</p>
@@ -109,9 +137,17 @@ export default function SalesHistoryPage() {
         </Card>
         <Card>
           <CardContent className="py-4">
-            <p className="text-sm text-muted-foreground">Pending</p>
+            <p className="text-sm text-muted-foreground">Pending Approval</p>
             <p className="text-2xl font-semibold text-warning-foreground">
               {stats.pending}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="py-4">
+            <p className="text-sm text-muted-foreground">Waiting Delivery</p>
+            <p className="text-2xl font-semibold text-blue-500">
+              {stats.waiting}
             </p>
           </CardContent>
         </Card>
@@ -171,6 +207,7 @@ export default function SalesHistoryPage() {
                   <TableHead className="text-right">Price/Bag</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -179,35 +216,73 @@ export default function SalesHistoryPage() {
                     <TableCell className="text-muted-foreground">
                       {formatDateTime(transaction.createdAt)}
                     </TableCell>
-                    <TableCell className="font-medium">
-                      Cement {transaction.cementType}
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">Cement {transaction.cementType}</span>
+                        {transaction.isAdvancePayment && (
+                          <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded w-fit">
+                            Advance Payment
+                          </span>
+                        )}
+                        {transaction.isNegotiatedPrice && (
+                          <span className="text-[10px] bg-purple-100 text-purple-700 px-1 rounded w-fit">
+                            Negotiated Price
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {transaction.bagsSold}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(transaction.pricePerBag)}
+                      <div className="flex flex-col items-end">
+                        <span>{formatCurrency(transaction.pricePerBag)}</span>
+                        {transaction.isNegotiatedPrice && transaction.originalPricePerBag && (
+                          <span className="text-[10px] text-muted-foreground line-through">
+                            {formatCurrency(transaction.originalPricePerBag)}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(transaction.totalAmount)}
                     </TableCell>
                     <TableCell>
-                      {transaction.status === "Rejected" &&
-                      transaction.rejectionReason ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <StatusBadge status={transaction.status} />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-sm">
-                                Reason: {transaction.rejectionReason}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <StatusBadge status={transaction.status} />
+                      <div className="flex flex-col gap-1">
+                        {transaction.status === "Rejected" &&
+                        transaction.rejectionReason ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <StatusBadge status={transaction.status} />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-sm">
+                                  Reason: {transaction.rejectionReason}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <StatusBadge status={transaction.status} />
+                        )}
+                        {transaction.status === "Waiting for Delivery" && (
+                          <span className="text-[10px] text-muted-foreground">
+                            Waiting for customer to take cement
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {transaction.status === "Waiting for Delivery" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeliver(transaction.id)}
+                          disabled={isProcessing === transaction.id}
+                        >
+                          {isProcessing === transaction.id ? "Processing..." : "Mark Delivered"}
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>

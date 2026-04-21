@@ -44,6 +44,7 @@ export async function GET() {
 
       const [
         pendingCount,
+        waitingForDeliveryCount,
         todaySales,
         allApproved,
         recentTransactions,
@@ -52,6 +53,7 @@ export async function GET() {
         expenseBreakdown,
       ] = await Promise.all([
         Transaction.countDocuments({ status: "Pending", userId: { $in: userIds }, deletedAt: null }),
+        Transaction.countDocuments({ status: "Waiting for Delivery", userId: { $in: userIds }, deletedAt: null }),
         Transaction.find({
           status: "Approved",
           createdAt: { $gte: today },
@@ -200,6 +202,7 @@ export async function GET() {
 
       return NextResponse.json({
         pendingCount,
+        waitingForDeliveryCount,
         todayBags,
         todayRevenue, // In cents
         totalRevenue, // In cents
@@ -225,25 +228,39 @@ export async function GET() {
       });
     } else {
       // User stats (seller)
-      const [userTransactions, pendingCount, approvedCount, rejectedCount, userInventory] =
-        await Promise.all([
-          Transaction.find({ userId: session.userId })
-            .sort({ createdAt: -1 })
-            .limit(5),
-          Transaction.countDocuments({
-            userId: session.userId,
-            status: "Pending",
-          }),
-          Transaction.countDocuments({
-            userId: session.userId,
-            status: "Approved",
-          }),
-          Transaction.countDocuments({
-            userId: session.userId,
-            status: "Rejected",
-          }),
-          UserInventory.find({ userId: session.userId }),
-        ]);
+      const [
+        userTransactions,
+        pendingCount,
+        waitingForDeliveryCount,
+        approvedCount,
+        rejectedCount,
+        userInventory,
+      ] = await Promise.all([
+        Transaction.find({ userId: session.userId, deletedAt: null })
+          .sort({ createdAt: -1 })
+          .limit(5),
+        Transaction.countDocuments({
+          userId: session.userId,
+          status: "Pending",
+          deletedAt: null,
+        }),
+        Transaction.countDocuments({
+          userId: session.userId,
+          status: "Waiting for Delivery",
+          deletedAt: null,
+        }),
+        Transaction.countDocuments({
+          userId: session.userId,
+          status: "Approved",
+          deletedAt: null,
+        }),
+        Transaction.countDocuments({
+          userId: session.userId,
+          status: "Rejected",
+          deletedAt: null,
+        }),
+        UserInventory.find({ userId: session.userId, deletedAt: null }),
+      ]);
 
       const userObjectId = new mongoose.Types.ObjectId(session.userId);
       const [userSalesByType, userExpensesByType] = await Promise.all([
@@ -293,6 +310,7 @@ export async function GET() {
 
       return NextResponse.json({
         pendingCount,
+        waitingForDeliveryCount,
         approvedCount,
         rejectedCount,
         todayBags,

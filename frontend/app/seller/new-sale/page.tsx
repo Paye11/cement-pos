@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -38,6 +39,9 @@ export default function NewSalePage() {
   const [formData, setFormData] = useState({
     cementType: "",
     bagsSold: "",
+    isAdvancePayment: false,
+    useNegotiatedPrice: false,
+    negotiatedPrice: "",
   });
 
   useEffect(() => {
@@ -79,7 +83,13 @@ export default function NewSalePage() {
     (i) => i.cementType === formData.cementType
   );
   const bags = parseInt(formData.bagsSold) || 0;
-  const total = selectedPrice ? selectedPrice.pricePerBag * bags : 0;
+  
+  // Calculate price to use
+  const basePricePerBag = selectedPrice?.pricePerBag || 0;
+  const negotiatedPrice = parseFloat(formData.negotiatedPrice) || 0;
+  const pricePerBag = formData.useNegotiatedPrice ? negotiatedPrice : basePricePerBag;
+  
+  const total = pricePerBag * bags;
   const availableStock = selectedInventory?.remainingStock || 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,6 +97,11 @@ export default function NewSalePage() {
 
     if (!formData.cementType || bags < 1) {
       toast.error("Please fill in all fields correctly");
+      return;
+    }
+
+    if (formData.useNegotiatedPrice && negotiatedPrice <= 0) {
+      toast.error("Please enter a valid negotiated price");
       return;
     }
 
@@ -103,6 +118,8 @@ export default function NewSalePage() {
         body: JSON.stringify({
           cementType: formData.cementType,
           bagsSold: bags,
+          isAdvancePayment: formData.isAdvancePayment,
+          negotiatedPrice: formData.useNegotiatedPrice ? negotiatedPrice : undefined,
         }),
       });
 
@@ -248,6 +265,56 @@ export default function NewSalePage() {
                 <p className="text-sm text-destructive">
                   Exceeds available stock ({availableStock} bags)
                 </p>
+              )}
+            </div>
+
+            {/* Advance Payment Option */}
+            <div className="flex items-start space-x-3 space-y-0 rounded-md border p-4">
+              <Checkbox
+                id="isAdvancePayment"
+                checked={formData.isAdvancePayment}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isAdvancePayment: !!checked })
+                }
+              />
+              <div className="space-y-1 leading-none">
+                <Label htmlFor="isAdvancePayment">Advance Payment</Label>
+                <p className="text-sm text-muted-foreground">
+                  Check this if the buyer has paid but has not taken the cement yet.
+                </p>
+              </div>
+            </div>
+
+            {/* Negotiable Price Option */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="useNegotiatedPrice"
+                  checked={formData.useNegotiatedPrice}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, useNegotiatedPrice: !!checked })
+                  }
+                />
+                <Label htmlFor="useNegotiatedPrice">Use Negotiated Price</Label>
+              </div>
+
+              {formData.useNegotiatedPrice && (
+                <div className="flex flex-col gap-2 pl-6">
+                  <Label htmlFor="negotiatedPrice">Negotiated Price (per bag)</Label>
+                  <Input
+                    id="negotiatedPrice"
+                    type="number"
+                    step="0.01"
+                    placeholder="Enter price per bag"
+                    value={formData.negotiatedPrice}
+                    onChange={(e) =>
+                      setFormData({ ...formData, negotiatedPrice: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Original price: {formatCurrency(basePricePerBag)}
+                  </p>
+                </div>
               )}
             </div>
 

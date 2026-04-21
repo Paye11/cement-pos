@@ -35,6 +35,9 @@ interface Transaction {
   pricePerBag: number;
   totalAmount: number;
   status: "Pending" | "Approved" | "Rejected";
+  isAdvancePayment: boolean;
+  isNegotiatedPrice: boolean;
+  originalPricePerBag?: number;
   createdAt: string;
 }
 
@@ -170,12 +173,33 @@ export default function ApprovalsPage() {
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell>Cement {transaction.cementType}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>Cement {transaction.cementType}</span>
+                        {transaction.isAdvancePayment && (
+                          <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded w-fit">
+                            Advance Payment
+                          </span>
+                        )}
+                        {transaction.isNegotiatedPrice && (
+                          <span className="text-[10px] bg-purple-100 text-purple-700 px-1 rounded w-fit">
+                            Negotiated Price
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       {transaction.bagsSold}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(transaction.pricePerBag)}
+                      <div className="flex flex-col items-end">
+                        <span>{formatCurrency(transaction.pricePerBag)}</span>
+                        {transaction.isNegotiatedPrice && transaction.originalPricePerBag && (
+                          <span className="text-[10px] text-muted-foreground line-through">
+                            {formatCurrency(transaction.originalPricePerBag)}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(transaction.totalAmount)}

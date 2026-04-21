@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import type { CementType } from "./cement-price";
 
-export type TransactionEventType = "Submitted" | "Approved" | "Rejected";
+export type TransactionEventType = "Submitted" | "Approved" | "Rejected" | "Delivered";
 
 export interface ITransactionEvent extends Document {
   _id: mongoose.Types.ObjectId;
@@ -47,7 +47,7 @@ const TransactionEventSchema = new Schema<ITransactionEvent>(
     },
     eventType: {
       type: String,
-      enum: ["Submitted", "Approved", "Rejected"],
+      enum: ["Submitted", "Approved", "Rejected", "Delivered"],
       required: [true, "Event type is required"],
     },
     performedBy: {

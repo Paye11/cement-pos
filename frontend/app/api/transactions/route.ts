@@ -54,6 +54,11 @@ export async function GET(request: NextRequest) {
         pricePerBag: t.pricePerBag,
         totalAmount: t.totalAmount,
         status: t.status,
+        isAdvancePayment: t.isAdvancePayment,
+        bagsDelivered: t.bagsDelivered,
+        deliveryStatus: t.deliveryStatus,
+        isNegotiatedPrice: t.isNegotiatedPrice,
+        originalPricePerBag: t.originalPricePerBag,
         rejectionReason: t.rejectionReason,
         approvedBy: t.approvedBy
           ? {
@@ -90,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { cementType, bagsSold } = body;
+    const { cementType, bagsSold, isAdvancePayment, negotiatedPrice } = body;
 
     if (!cementType || !bagsSold) {
       return NextResponse.json(
@@ -142,15 +147,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const totalAmount = price.pricePerBag * bagsSold;
+    // Determine price to use
+    const isNegotiated = !!negotiatedPrice && negotiatedPrice > 0;
+    const pricePerBag = isNegotiated ? negotiatedPrice : price.pricePerBag;
+    const totalAmount = pricePerBag * bagsSold;
+
+    // Determine initial status
+    // If advance payment, it waits for delivery before it can be approved
+    const status = isAdvancePayment ? "Waiting for Delivery" : "Pending";
 
     const transaction = await Transaction.create({
       userId: session.userId,
       cementType,
       bagsSold,
-      pricePerBag: price.pricePerBag,
+      pricePerBag,
       totalAmount,
-      status: "Pending",
+      status,
+      isAdvancePayment: !!isAdvancePayment,
+      bagsDelivered: isAdvancePayment ? 0 : bagsSold,
+      deliveryStatus: isAdvancePayment ? "Pending" : "Fully Delivered",
+      isNegotiatedPrice: isNegotiated,
+      originalPricePerBag: isNegotiated ? price.pricePerBag : undefined,
       deletedAt: null,
     });
 

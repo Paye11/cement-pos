@@ -1,7 +1,8 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import type { CementType } from "./cement-price";
 
-export type TransactionStatus = "Pending" | "Approved" | "Rejected";
+export type TransactionStatus = "Pending" | "Approved" | "Rejected" | "Waiting for Delivery";
+export type DeliveryStatus = "Pending" | "Partially Delivered" | "Fully Delivered";
 
 export interface ITransaction extends Document {
   _id: mongoose.Types.ObjectId;
@@ -11,6 +12,11 @@ export interface ITransaction extends Document {
   pricePerBag: number; // Stored in cents
   totalAmount: number; // Stored in cents
   status: TransactionStatus;
+  isAdvancePayment: boolean;
+  bagsDelivered: number;
+  deliveryStatus: DeliveryStatus;
+  isNegotiatedPrice: boolean;
+  originalPricePerBag?: number;
   rejectionReason?: string;
   approvedBy?: mongoose.Types.ObjectId;
   approvalDate?: Date;
@@ -48,8 +54,28 @@ const TransactionSchema = new Schema<ITransaction>(
     },
     status: {
       type: String,
-      enum: ["Pending", "Approved", "Rejected"],
+      enum: ["Pending", "Approved", "Rejected", "Waiting for Delivery"],
       default: "Pending",
+    },
+    isAdvancePayment: {
+      type: Boolean,
+      default: false,
+    },
+    bagsDelivered: {
+      type: Number,
+      default: 0,
+    },
+    deliveryStatus: {
+      type: String,
+      enum: ["Pending", "Partially Delivered", "Fully Delivered"],
+      default: "Pending",
+    },
+    isNegotiatedPrice: {
+      type: Boolean,
+      default: false,
+    },
+    originalPricePerBag: {
+      type: Number,
     },
     rejectionReason: {
       type: String,
