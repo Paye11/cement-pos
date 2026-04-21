@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { History } from "lucide-react";
@@ -42,7 +42,26 @@ interface TxEvent {
   createdAt: string;
 }
 
-export default function AdminHistoryPage() {
+function HistoryPageFallback() {
+  return (
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdminHistoryPageInner() {
   const searchParams = useSearchParams();
   const userId = searchParams.get("userId");
   const [isLoading, setIsLoading] = useState(true);
@@ -277,6 +296,14 @@ export default function AdminHistoryPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function AdminHistoryPage() {
+  return (
+    <Suspense fallback={<HistoryPageFallback />}>
+      <AdminHistoryPageInner />
+    </Suspense>
   );
 }
 
