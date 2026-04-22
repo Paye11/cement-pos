@@ -26,7 +26,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { toast } from "sonner";
 
-type PayrollType = "Seller" | "StoreBoy";
+type PayrollType = "Seller" | "StoreBoy" | "Security";
 type PayrollStatus = "Pending" | "Approved";
 
 interface User {
@@ -295,6 +295,7 @@ export default function PayrollPage() {
                 <SelectContent>
                   <SelectItem value="Seller">Seller Salary</SelectItem>
                   <SelectItem value="StoreBoy">Store Boy Salary</SelectItem>
+                  <SelectItem value="Security">Security Salary</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -442,7 +443,13 @@ export default function PayrollPage() {
                       {p.user?.name || "Unknown"}
                       <div className="text-xs text-muted-foreground">@{p.user?.username || "-"}</div>
                     </TableCell>
-                    <TableCell>{p.payrollType === "Seller" ? "Seller Salary" : "Store Boy Salary"}</TableCell>
+                    <TableCell>
+                      {p.payrollType === "Seller" 
+                        ? "Seller Salary" 
+                        : p.payrollType === "StoreBoy" 
+                        ? "Store Boy Salary" 
+                        : "Security Salary"}
+                    </TableCell>
                     <TableCell>{MONTHS.find((m) => Number(m.value) === p.month)?.label || p.month}</TableCell>
                     <TableCell>{p.year}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(p.amount)}</TableCell>

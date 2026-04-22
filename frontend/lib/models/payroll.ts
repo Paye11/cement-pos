@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export type PayrollType = "Seller" | "StoreBoy";
+export type PayrollType = "Seller" | "StoreBoy" | "Security";
 export type PayrollStatus = "Pending" | "Approved";
 
 export interface IPayroll extends Document {
@@ -27,7 +27,7 @@ const PayrollSchema = new Schema<IPayroll>(
     },
     payrollType: {
       type: String,
-      enum: ["Seller", "StoreBoy"],
+      enum: ["Seller", "StoreBoy", "Security"],
       required: [true, "Payroll type is required"],
     },
     amount: {

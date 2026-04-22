@@ -15,8 +15,8 @@ function isValidStatus(value: unknown): value is "Pending" | "Approved" {
   return value === "Pending" || value === "Approved";
 }
 
-function isValidPayrollType(value: unknown): value is "Seller" | "StoreBoy" {
-  return value === "Seller" || value === "StoreBoy";
+function isValidPayrollType(value: unknown): value is "Seller" | "StoreBoy" | "Security" {
+  return value === "Seller" || value === "StoreBoy" || value === "Security";
 }
 
 export async function GET(request: NextRequest) {
