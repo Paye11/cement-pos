@@ -40,14 +40,20 @@ import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { ReportPreview } from "@/components/report-preview";
 
 interface ReportData {
   summary: {
     totalBags: number;
+    totalBags32: number;
+    totalBags42: number;
     totalRevenue: number;
     totalTransactions: number;
     totalPayroll: number;
     totalExpenses: number;
+    totalStockReceived: number;
+    totalStockReceived32: number;
+    totalStockReceived42: number;
     netRevenue: number;
   };
   byCementType: Array<{
@@ -60,10 +66,15 @@ interface ReportData {
     userId: string;
     name: string;
     bags: number;
+    bags32: number;
+    bags42: number;
     revenue: number;
     count: number;
     payroll: number;
     expenses: number;
+    stockReceived: number;
+    stockReceived32: number;
+    stockReceived42: number;
     netRevenue: number;
   }>;
   byDate: Array<{
@@ -213,11 +224,16 @@ export default function ReportsPage() {
       startY: 45,
       head: [["Metric", "Value"]],
       body: [
-        ["Total Revenue", formatCurrency(data.summary.totalRevenue)],
-        ["Total Payroll", formatCurrency(data.summary.totalPayroll)],
-        ["Other Expenses", formatCurrency(data.summary.totalExpenses)],
-        ["Net Revenue", formatCurrency(data.summary.netRevenue)],
+        ["Total Stock Received", formatNumber(data.summary.totalStockReceived)],
+        ["- Stock Received (32.5)", formatNumber(data.summary.totalStockReceived32)],
+        ["- Stock Received (42.5)", formatNumber(data.summary.totalStockReceived42)],
         ["Total Bags Sold", formatNumber(data.summary.totalBags)],
+        ["- Bags Sold (32.5)", formatNumber(data.summary.totalBags32)],
+        ["- Bags Sold (42.5)", formatNumber(data.summary.totalBags42)],
+        ["Total Revenue", formatCurrency(data.summary.totalRevenue)],
+        ["Total Payroll (Salary)", formatCurrency(data.summary.totalPayroll)],
+        ["Other Expenses", formatCurrency(data.summary.totalExpenses)],
+        ["Net Revenue (Profit)", formatCurrency(data.summary.netRevenue)],
       ],
       theme: "striped",
     });
@@ -229,10 +245,11 @@ export default function ReportsPage() {
       
       autoTable(doc, {
         startY: 20,
-        head: [["Seller", "Bags Sold", "Revenue", "Payroll", "Expenses", "Net Profit"]],
+        head: [["Seller", "Received", "Sold (32/42)", "Revenue", "Salary", "Exp", "Net"]],
         body: data.byUser.map(u => [
           u.name,
-          formatNumber(u.bags),
+          formatNumber(u.stockReceived),
+          `${formatNumber(u.bags32)} / ${formatNumber(u.bags42)}`,
           formatCurrency(u.revenue),
           formatCurrency(u.payroll),
           formatCurrency(u.expenses),
@@ -272,11 +289,16 @@ export default function ReportsPage() {
       [`Seller: ${selectedUserName}`],
       [],
       ["Metric", "Value"],
-      ["Total Revenue", data.summary.totalRevenue / 100],
-      ["Total Payroll", data.summary.totalPayroll / 100],
-      ["Other Expenses", data.summary.totalExpenses / 100],
-      ["Net Revenue", data.summary.netRevenue / 100],
+      ["Total Stock Received", data.summary.totalStockReceived],
+      ["- Stock Received (32.5)", data.summary.totalStockReceived32],
+      ["- Stock Received (42.5)", data.summary.totalStockReceived42],
       ["Total Bags Sold", data.summary.totalBags],
+      ["- Bags Sold (32.5)", data.summary.totalBags32],
+      ["- Bags Sold (42.5)", data.summary.totalBags42],
+      ["Total Revenue", data.summary.totalRevenue / 100],
+      ["Total Payroll (Salary)", data.summary.totalPayroll / 100],
+      ["Other Expenses", data.summary.totalExpenses / 100],
+      ["Net Revenue (Profit)", data.summary.netRevenue / 100],
     ];
     const summaryWS = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(workbook, summaryWS, "Summary");
@@ -284,10 +306,13 @@ export default function ReportsPage() {
     // Seller Performance Sheet
     if (filters.userId === "all") {
       const sellerData = [
-        ["Seller", "Bags Sold", "Revenue", "Payroll", "Expenses", "Net Profit"],
+        ["Seller", "Stock Received", "Total Sold", "Sold 32.5", "Sold 42.5", "Revenue", "Salary", "Expenses", "Net Profit"],
         ...data.byUser.map(u => [
           u.name,
+          u.stockReceived,
           u.bags,
+          u.bags32,
+          u.bags42,
           u.revenue / 100,
           u.payroll / 100,
           u.expenses / 100,
@@ -482,6 +507,14 @@ export default function ReportsPage() {
               <Button variant="outline" onClick={handleClearFilter}>
                 Clear
               </Button>
+              <ReportPreview 
+                data={data}
+                period={reportPeriod}
+                sellerName={selectedUserName}
+                onPrint={handlePrint}
+                onPDF={exportToPDF}
+                onExcel={exportToExcel}
+              />
               <Button variant="outline" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
                 Print

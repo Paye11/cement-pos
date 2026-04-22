@@ -5,6 +5,7 @@ import Transaction from "@/lib/models/transaction";
 import User from "@/lib/models/user";
 import Payroll from "@/lib/models/payroll";
 import Expense from "@/lib/models/expense";
+import UserInventory from "@/lib/models/user-inventory";
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,6 +90,13 @@ export async function GET(request: NextRequest) {
     }
     const expenses = await Expense.find(expenseQuery).populate("userId", "name username");
 
+    // Fetch user inventory for stock received data
+    const inventoryQuery: Record<string, unknown> = { deletedAt: null };
+    if (targetUserId) {
+      inventoryQuery.userId = targetUserId;
+    }
+    const inventories = await UserInventory.find(inventoryQuery);
+
     let start: Date | null = null;
     let end: Date | null = null;
 
@@ -117,14 +125,19 @@ export async function GET(request: NextRequest) {
       { bags: number; revenue: number; count: number }
     > = {};
     const byUser: Record<
-      string,
-      {
-        name: string;
-        bags: number;
-        totalAmount: number;
+    string,
+    {
+      name: string;
+      bags: number;
+      bags32: number;
+      bags42: number;
+      totalAmount: number;
       count: number;
       payroll: number;
       expenses: number;
+      stockReceived: number;
+      stockReceived32: number;
+      stockReceived42: number;
     }
   > = {};
   const byDate: Record<string, { bags: number; revenue: number }> = {};
@@ -143,9 +156,23 @@ export async function GET(request: NextRequest) {
     const userName =
       (t.userId as unknown as { name: string })?.name || "Unknown";
     if (!byUser[userId]) {
-      byUser[userId] = { name: userName, bags: 0, totalAmount: 0, count: 0, payroll: 0, expenses: 0 };
+      byUser[userId] = {
+        name: userName,
+        bags: 0,
+        bags32: 0,
+        bags42: 0,
+        totalAmount: 0,
+        count: 0,
+        payroll: 0,
+        expenses: 0,
+        stockReceived: 0,
+        stockReceived32: 0,
+        stockReceived42: 0,
+      };
     }
     byUser[userId].bags += t.bagsSold;
+    if (t.cementType === "32.5") byUser[userId].bags32 += t.bagsSold;
+    if (t.cementType === "42.5") byUser[userId].bags42 += t.bagsSold;
     byUser[userId].totalAmount += t.totalAmount;
     byUser[userId].count += 1;
 
@@ -163,15 +190,43 @@ export async function GET(request: NextRequest) {
     const userId = e.userId?._id?.toString() || "unknown";
     if (!byUser[userId]) {
       const userName = (e.userId as unknown as { name: string })?.name || "Unknown";
-      byUser[userId] = { name: userName, bags: 0, totalAmount: 0, count: 0, payroll: 0, expenses: 0 };
+      byUser[userId] = {
+        name: userName,
+        bags: 0,
+        bags32: 0,
+        bags42: 0,
+        totalAmount: 0,
+        count: 0,
+        payroll: 0,
+        expenses: 0,
+        stockReceived: 0,
+        stockReceived32: 0,
+        stockReceived42: 0,
+      };
     }
     byUser[userId].expenses += e.amount;
   });
 
+  // Aggregate stock received by user
+  inventories.forEach((inv) => {
+    const userId = inv.userId.toString();
+    if (byUser[userId]) {
+      byUser[userId].stockReceived += inv.totalAssigned;
+      if (inv.cementType === "32.5") byUser[userId].stockReceived32 += inv.totalAssigned;
+      if (inv.cementType === "42.5") byUser[userId].stockReceived42 += inv.totalAssigned;
+    }
+  });
+
   // Calculate totals
   const totalBags = transactions.reduce((sum, t) => sum + t.bagsSold, 0);
+  const totalBags32 = transactions.filter(t => t.cementType === "32.5").reduce((sum, t) => sum + t.bagsSold, 0);
+  const totalBags42 = transactions.filter(t => t.cementType === "42.5").reduce((sum, t) => sum + t.bagsSold, 0);
   const totalRevenue = transactions.reduce((sum, t) => sum + t.totalAmount, 0);
   const totalTransactions = transactions.length;
+  const totalStockReceived = inventories.reduce((sum, inv) => sum + inv.totalAssigned, 0);
+  const totalStockReceived32 = inventories.filter(inv => inv.cementType === "32.5").reduce((sum, inv) => sum + inv.totalAssigned, 0);
+  const totalStockReceived42 = inventories.filter(inv => inv.cementType === "42.5").reduce((sum, inv) => sum + inv.totalAssigned, 0);
+
   const payrollByUser = filteredPayroll.reduce((acc, p) => {
     const id = p.userId?._id?.toString() || "unknown";
     acc[id] = (acc[id] || 0) + p.amount;
@@ -188,10 +243,15 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     summary: {
       totalBags,
+      totalBags32,
+      totalBags42,
       totalRevenue,
       totalTransactions,
       totalPayroll,
       totalExpenses,
+      totalStockReceived,
+      totalStockReceived32,
+      totalStockReceived42,
       netRevenue,
     },
     byCementType: Object.entries(byCementType).map(([type, data]) => ({
