@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Calendar, TrendingUp, Package, Users } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Calendar, TrendingUp, Package, Users, Download, Printer, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -37,6 +44,7 @@ interface ReportData {
     totalRevenue: number;
     totalTransactions: number;
     totalPayroll: number;
+    totalExpenses: number;
     netRevenue: number;
   };
   byCementType: Array<{
@@ -52,6 +60,7 @@ interface ReportData {
     revenue: number;
     count: number;
     payroll: number;
+    expenses: number;
     netRevenue: number;
   }>;
   byDate: Array<{
@@ -61,22 +70,88 @@ interface ReportData {
   }>;
 }
 
+interface User {
+  id: string;
+  name: string;
+  username: string;
+}
+
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"];
+
+const MONTHS = [
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
+const YEARS = Array.from({ length: 5 }, (_, i) => ({
+  value: (new Date().getFullYear() - i).toString(),
+  label: (new Date().getFullYear() - i).toString(),
+}));
 
 export default function ReportsPage() {
   const [data, setData] = useState<ReportData | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [dateRange, setDateRange] = useState({
+  const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
+    month: "",
+    year: "",
+    userId: "all",
+    reportType: "custom" as "custom" | "monthly",
   });
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function fetchInitialData() {
+      try {
+        const [reportsRes, usersRes] = await Promise.all([
+          fetch("/api/stats/reports"),
+          fetch("/api/users"),
+        ]);
+
+        if (reportsRes.ok) {
+          const reportData = await reportsRes.json();
+          setData(reportData);
+        }
+
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          setUsers(usersData.users.filter((u: any) => u.role === "user"));
+        }
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        toast.error("Failed to load reports");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchInitialData();
+  }, []);
 
   const fetchReports = async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (dateRange.startDate) params.append("startDate", dateRange.startDate);
-      if (dateRange.endDate) params.append("endDate", dateRange.endDate);
+      if (filters.reportType === "monthly") {
+        if (filters.month) params.append("month", filters.month);
+        if (filters.year) params.append("year", filters.year);
+      } else {
+        if (filters.startDate) params.append("startDate", filters.startDate);
+        if (filters.endDate) params.append("endDate", filters.endDate);
+      }
+      if (filters.userId !== "all") params.append("userId", filters.userId);
 
       const response = await fetch(`/api/stats/reports?${params.toString()}`);
       if (response.ok) {
@@ -85,23 +160,30 @@ export default function ReportsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch reports:", error);
-      toast.error("Failed to load reports");
+      toast.error("Failed to update reports");
     } finally {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchReports();
-  }, []);
 
   const handleFilter = () => {
     fetchReports();
   };
 
   const handleClearFilter = () => {
-    setDateRange({ startDate: "", endDate: "" });
+    setFilters({
+      startDate: "",
+      endDate: "",
+      month: "",
+      year: "",
+      userId: "all",
+      reportType: "custom",
+    });
     setTimeout(() => fetchReports(), 100);
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   if (isLoading) {
@@ -143,50 +225,161 @@ export default function ReportsPage() {
     revenue: item.revenue / 100, // Convert to dollars for display
   }));
 
+  const selectedUserName = filters.userId === "all" ? "All Sellers" : users.find(u => u.id === filters.userId)?.name || "Unknown Seller";
+  const reportPeriod = filters.reportType === "monthly" && filters.month && filters.year 
+    ? `${MONTHS.find(m => m.value === filters.month)?.label} ${filters.year}`
+    : filters.startDate && filters.endDate 
+      ? `${formatDate(filters.startDate)} to ${formatDate(filters.endDate)}`
+      : "All Time";
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* Date Filter */}
-      <Card>
+    <div className="flex flex-col gap-6 print:p-0">
+      {/* Filters */}
+      <Card className="print:hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Date Range Filter
+            Report Configuration
           </CardTitle>
+          <CardDescription>Select filters to generate specific financial reports</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="start-date">Start Date</Label>
-              <Input
-                id="start-date"
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) =>
-                  setDateRange({ ...dateRange, startDate: e.target.value })
-                }
-              />
+          <div className="flex flex-col gap-6">
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="flex flex-col gap-2">
+                <Label>Report Type</Label>
+                <Select 
+                  value={filters.reportType} 
+                  onValueChange={(v: any) => setFilters({...filters, reportType: v})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom Date Range</SelectItem>
+                    <SelectItem value="monthly">Monthly Report</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label>Seller / User</Label>
+                <Select 
+                  value={filters.userId} 
+                  onValueChange={(v) => setFilters({...filters, userId: v})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Sellers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sellers</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name} (@{user.username})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {filters.reportType === "monthly" ? (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label>Month</Label>
+                    <Select 
+                      value={filters.month} 
+                      onValueChange={(v) => setFilters({...filters, month: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MONTHS.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label>Year</Label>
+                    <Select 
+                      value={filters.year} 
+                      onValueChange={(v) => setFilters({...filters, year: v})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {YEARS.map((y) => (
+                          <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="start-date">Start Date</Label>
+                    <Input
+                      id="start-date"
+                      type="date"
+                      value={filters.startDate}
+                      onChange={(e) =>
+                        setFilters({ ...filters, startDate: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="end-date">End Date</Label>
+                    <Input
+                      id="end-date"
+                      type="date"
+                      value={filters.endDate}
+                      onChange={(e) =>
+                        setFilters({ ...filters, endDate: e.target.value })
+                      }
+                    />
+                  </div>
+                </>
+              )}
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="end-date">End Date</Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) =>
-                  setDateRange({ ...dateRange, endDate: e.target.value })
-                }
-              />
+
+            <div className="flex gap-4">
+              <Button onClick={handleFilter} className="flex-1">
+                <FileText className="h-4 w-4 mr-2" />
+                Generate Report
+              </Button>
+              <Button variant="outline" onClick={handleClearFilter}>
+                Clear
+              </Button>
+              <Button variant="outline" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print Report
+              </Button>
             </div>
-            <Button onClick={handleFilter}>Apply Filter</Button>
-            <Button variant="outline" onClick={handleClearFilter}>
-              Clear
-            </Button>
           </div>
         </CardContent>
       </Card>
 
+      {/* Report Header (Visible in print) */}
+      <div className="hidden print:block text-center mb-8">
+        <h1 className="text-2xl font-bold">Financial Performance Report</h1>
+        <p className="text-muted-foreground">Generated on {new Date().toLocaleDateString()}</p>
+        <div className="mt-4 flex justify-center gap-8">
+          <div>
+            <span className="font-semibold">Period: </span>
+            <span>{reportPeriod}</span>
+          </div>
+          <div>
+            <span className="font-semibold">Seller: </span>
+            <span>{selectedUserName}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-5 print:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Revenue</CardDescription>
@@ -203,26 +396,39 @@ export default function ReportsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Payroll</CardDescription>
-            <CardTitle className="text-3xl">
+            <CardTitle className="text-3xl text-destructive">
               {formatCurrency(data.summary.totalPayroll)}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Approved payroll deducted from revenue
+              Staff salaries for the period
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Other Expenses</CardDescription>
+            <CardTitle className="text-3xl text-destructive">
+              {formatCurrency(data.summary.totalExpenses)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Operational expenses recorded
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Net Revenue</CardDescription>
-            <CardTitle className="text-3xl">
+            <CardTitle className="text-3xl text-accent">
               {formatCurrency(data.summary.netRevenue)}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Revenue minus approved payroll
+              Profit after all deductions
             </p>
           </CardContent>
         </Card>
@@ -235,31 +441,14 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              All approved sales combined
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Avg. Transaction Value</CardDescription>
-            <CardTitle className="text-3xl">
-              {data.summary.totalTransactions > 0
-                ? formatCurrency(
-                    data.summary.totalRevenue / data.summary.totalTransactions
-                  )
-                : "$0.00"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Average revenue per sale
+              Combined volume of sales
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Charts (Hidden in print if needed, but useful for visuals) */}
+      <div className="grid gap-6 md:grid-cols-2 print:hidden">
         {/* Sales by Cement Type */}
         <Card>
           <CardHeader>
@@ -315,7 +504,7 @@ export default function ReportsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Daily Sales Trend
+              Sales Trend (Last 14 Days)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -353,62 +542,64 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* Top Sellers Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Top Sellers
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.byUser.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Rank</TableHead>
-                  <TableHead>Seller</TableHead>
-                  <TableHead className="text-right">Transactions</TableHead>
-                  <TableHead className="text-right">Bags Sold</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">Payroll</TableHead>
-                  <TableHead className="text-right">Net</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.byUser.slice(0, 10).map((user, index) => (
-                  <TableRow key={user.userId}>
-                    <TableCell className="font-medium">#{index + 1}</TableCell>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell className="text-right">{user.count}</TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(user.bags)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(user.revenue)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(user.payroll)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(user.netRevenue)}
-                    </TableCell>
+      {/* Seller Performance Table */}
+      {filters.userId === "all" && (
+        <Card className="print:shadow-none print:border-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Seller Performance Breakdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {data.byUser.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Seller</TableHead>
+                    <TableHead className="text-right">Bags Sold</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="text-right">Payroll</TableHead>
+                    <TableHead className="text-right">Expenses</TableHead>
+                    <TableHead className="text-right">Net Profit</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">
-              No sales data available
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {data.byUser.map((user) => (
+                    <TableRow key={user.userId}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell className="text-right">
+                        {formatNumber(user.bags)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(user.revenue)}
+                      </TableCell>
+                      <TableCell className="text-right text-destructive">
+                        {formatCurrency(user.payroll)}
+                      </TableCell>
+                      <TableCell className="text-right text-destructive">
+                        {formatCurrency(user.expenses)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-accent">
+                        {formatCurrency(user.netRevenue)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                No seller data found for this period
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cement Type Breakdown */}
-      <Card>
+      <Card className="print:shadow-none print:border-none">
         <CardHeader>
-          <CardTitle>Cement Type Breakdown</CardTitle>
+          <CardTitle>Inventory Sales Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
           {data.byCementType.length > 0 ? (
@@ -418,8 +609,8 @@ export default function ReportsPage() {
                   <TableHead>Cement Type</TableHead>
                   <TableHead className="text-right">Transactions</TableHead>
                   <TableHead className="text-right">Bags Sold</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">% of Total</TableHead>
+                  <TableHead className="text-right">Revenue Generated</TableHead>
+                  <TableHead className="text-right">% of Volume</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -436,8 +627,8 @@ export default function ReportsPage() {
                       {formatCurrency(item.revenue)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {data.summary.totalRevenue > 0
-                        ? `${((item.revenue / data.summary.totalRevenue) * 100).toFixed(1)}%`
+                      {data.summary.totalBags > 0
+                        ? `${((item.bags / data.summary.totalBags) * 100).toFixed(1)}%`
                         : "0%"}
                     </TableCell>
                   </TableRow>
@@ -451,6 +642,45 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detailed Transaction List (Only in single user report or print) */}
+      {filters.userId !== "all" && (
+        <Card className="print:shadow-none print:border-none">
+          <CardHeader>
+            <CardTitle>Detailed Transactions for {selectedUserName}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Showing detailed records for the period {reportPeriod}
+            </p>
+            {/* We could fetch individual transactions here if needed, 
+                but for now we're using the aggregated data. 
+                In a real scenario, we might want a separate table for detailed records. */}
+            <div className="bg-muted/30 p-4 rounded-lg border border-dashed text-center">
+              <p className="text-sm">Summary of {selectedUserName}{"'"}s activities</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Sales</p>
+                  <p className="font-semibold">{formatCurrency(data.byUser[0]?.revenue || 0)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Bags Sold</p>
+                  <p className="font-semibold">{data.byUser[0]?.bags || 0} bags</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Payroll Received</p>
+                  <p className="font-semibold">{formatCurrency(data.byUser[0]?.payroll || 0)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Expenses Recorded</p>
+                  <p className="font-semibold">{formatCurrency(data.byUser[0]?.expenses || 0)}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
+
