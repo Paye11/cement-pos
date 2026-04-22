@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Calendar, TrendingUp, Package, Users, Download, Printer, FileText } from "lucide-react";
+import { Calendar, TrendingUp, Package, Users, Download, Printer, FileText, FileSpreadsheet, FileJson } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,9 @@ import {
 } from "recharts";
 import { formatCurrency, formatNumber, formatDate } from "@/lib/format";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 interface ReportData {
   summary: {
@@ -184,6 +187,132 @@ export default function ReportsPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const exportToPDF = () => {
+    if (!data) return;
+    
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFontSize(18);
+    doc.text("Financial Performance Report", pageWidth / 2, 15, { align: "center" });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, 22, { align: "center" });
+    doc.text(`Period: ${reportPeriod} | Seller: ${selectedUserName}`, pageWidth / 2, 28, { align: "center" });
+    
+    // Summary
+    doc.setTextColor(0);
+    doc.setFontSize(14);
+    doc.text("Summary", 14, 40);
+    
+    autoTable(doc, {
+      startY: 45,
+      head: [["Metric", "Value"]],
+      body: [
+        ["Total Revenue", formatCurrency(data.summary.totalRevenue)],
+        ["Total Payroll", formatCurrency(data.summary.totalPayroll)],
+        ["Other Expenses", formatCurrency(data.summary.totalExpenses)],
+        ["Net Revenue", formatCurrency(data.summary.netRevenue)],
+        ["Total Bags Sold", formatNumber(data.summary.totalBags)],
+      ],
+      theme: "striped",
+    });
+
+    // Seller Performance
+    if (filters.userId === "all" && data.byUser.length > 0) {
+      doc.addPage();
+      doc.text("Seller Performance Breakdown", 14, 15);
+      
+      autoTable(doc, {
+        startY: 20,
+        head: [["Seller", "Bags Sold", "Revenue", "Payroll", "Expenses", "Net Profit"]],
+        body: data.byUser.map(u => [
+          u.name,
+          formatNumber(u.bags),
+          formatCurrency(u.revenue),
+          formatCurrency(u.payroll),
+          formatCurrency(u.expenses),
+          formatCurrency(u.netRevenue)
+        ]),
+      });
+    }
+
+    // Inventory Breakdown
+    doc.addPage();
+    doc.text("Inventory Sales Breakdown", 14, 15);
+    autoTable(doc, {
+      startY: 20,
+      head: [["Cement Type", "Transactions", "Bags Sold", "Revenue Generated"]],
+      body: data.byCementType.map(item => [
+        `Cement ${item.cementType}`,
+        item.count,
+        formatNumber(item.bags),
+        formatCurrency(item.revenue)
+      ]),
+    });
+
+    doc.save(`Financial_Report_${reportPeriod.replace(/\s+/g, "_")}.pdf`);
+    toast.success("PDF report downloaded");
+  };
+
+  const exportToExcel = () => {
+    if (!data) return;
+
+    const workbook = XLSX.utils.book_new();
+
+    // Summary Sheet
+    const summaryData = [
+      ["Financial Performance Report"],
+      [`Generated on: ${new Date().toLocaleDateString()}`],
+      [`Period: ${reportPeriod}`],
+      [`Seller: ${selectedUserName}`],
+      [],
+      ["Metric", "Value"],
+      ["Total Revenue", data.summary.totalRevenue / 100],
+      ["Total Payroll", data.summary.totalPayroll / 100],
+      ["Other Expenses", data.summary.totalExpenses / 100],
+      ["Net Revenue", data.summary.netRevenue / 100],
+      ["Total Bags Sold", data.summary.totalBags],
+    ];
+    const summaryWS = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summaryWS, "Summary");
+
+    // Seller Performance Sheet
+    if (filters.userId === "all") {
+      const sellerData = [
+        ["Seller", "Bags Sold", "Revenue", "Payroll", "Expenses", "Net Profit"],
+        ...data.byUser.map(u => [
+          u.name,
+          u.bags,
+          u.revenue / 100,
+          u.payroll / 100,
+          u.expenses / 100,
+          u.netRevenue / 100
+        ])
+      ];
+      const sellerWS = XLSX.utils.aoa_to_sheet(sellerData);
+      XLSX.utils.book_append_sheet(workbook, sellerWS, "Seller Performance");
+    }
+
+    // Inventory Sheet
+    const inventoryData = [
+      ["Cement Type", "Transactions", "Bags Sold", "Revenue Generated"],
+      ...data.byCementType.map(item => [
+        `Cement ${item.cementType}`,
+        item.count,
+        item.bags,
+        item.revenue / 100
+      ])
+    ];
+    const inventoryWS = XLSX.utils.aoa_to_sheet(inventoryData);
+    XLSX.utils.book_append_sheet(workbook, inventoryWS, "Inventory Breakdown");
+
+    XLSX.writeFile(workbook, `Financial_Report_${reportPeriod.replace(/\s+/g, "_")}.xlsx`);
+    toast.success("Excel report downloaded");
   };
 
   if (isLoading) {
@@ -355,7 +484,15 @@ export default function ReportsPage() {
               </Button>
               <Button variant="outline" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
-                Print Report
+                Print
+              </Button>
+              <Button variant="outline" onClick={exportToPDF}>
+                <Download className="h-4 w-4 mr-2" />
+                PDF
+              </Button>
+              <Button variant="outline" onClick={exportToExcel}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel
               </Button>
             </div>
           </div>
