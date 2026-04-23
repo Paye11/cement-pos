@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/format";
+import { SellerDetailsModal } from "@/components/admin/seller-details";
 
 interface DashboardStats {
   pendingCount: number;
@@ -72,6 +73,7 @@ interface DashboardStats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedSeller, setSelectedSeller] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     async function fetchStats() {
@@ -176,12 +178,24 @@ export default function AdminDashboard() {
             {stats.userStats.map((user) => (
               <Card key={user.id} className="bg-muted/20">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold">
-                    {user.name}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    @{user.username}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm font-semibold">
+                        {user.name}
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground">
+                        @{user.username}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-[10px] h-7 px-2"
+                      onClick={() => setSelectedSeller({ id: user.id, name: user.name })}
+                    >
+                      Details
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <div className="flex items-center justify-between p-3 rounded-lg bg-background">
@@ -430,6 +444,16 @@ export default function AdminDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Seller Details Modal */}
+      {selectedSeller && (
+        <SellerDetailsModal
+          isOpen={!!selectedSeller}
+          onClose={() => setSelectedSeller(null)}
+          userId={selectedSeller.id}
+          userName={selectedSeller.name}
+        />
+      )}
     </div>
   );
 }
