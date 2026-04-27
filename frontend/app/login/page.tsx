@@ -111,10 +111,18 @@ export default function LoginPage() {
                 )}
               </Button>
 
-              <div className="mt-4 overflow-hidden whitespace-nowrap border-y border-border/50 py-2">
-                <span className="animate-marquee text-xs font-medium text-destructive italic">
-                  Please make sure to submit your daily sales to the Admin for approval!
-                </span>
+              <div className="mt-4 border-y border-border/50 py-2 ft-marquee">
+                <div className="ft-marquee__inner">
+                  <span className="text-xs font-medium text-destructive italic px-8">
+                    Please make sure to submit your daily sales to the Admin for approval!
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="text-xs font-medium text-destructive italic px-8"
+                  >
+                    Please make sure to submit your daily sales to the Admin for approval!
+                  </span>
+                </div>
               </div>
             </form>
           </CardContent>

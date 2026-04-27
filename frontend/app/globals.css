@@ -135,3 +135,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes ft-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ft-marquee {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ft-marquee__inner {
+  display: inline-flex;
+  width: max-content;
+  animation: ft-marquee 15s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ft-marquee__inner {
+    animation: none;
+    transform: translateX(0);
+  }
+}
