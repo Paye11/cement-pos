@@ -112,9 +112,9 @@ export default function LoginPage() {
               </Button>
 
               <div className="mt-4 overflow-hidden whitespace-nowrap border-y border-border/50 py-2">
-                <div className="animate-marquee inline-block text-xs font-medium text-destructive italic">
+                <span className="animate-marquee text-xs font-medium text-destructive italic">
                   Please make sure to submit your daily sales to the Admin for approval!
-                </div>
+                </span>
               </div>
             </form>
           </CardContent>
