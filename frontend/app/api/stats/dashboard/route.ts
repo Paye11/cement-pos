@@ -54,7 +54,7 @@ export async function GET() {
         expenseBreakdown,
       ] = await Promise.all([
         Transaction.countDocuments({ status: "Pending", userId: { $in: userIds }, deletedAt: null }),
-        Expense.countDocuments({ status: "Pending", userId: { $in: userIds }, deletedAt: null }),
+        Expense.countDocuments({ status: { $in: ["Pending", "pending", "PENDING"] }, userId: { $in: userIds }, deletedAt: null }),
         Transaction.countDocuments({ status: "Waiting for Delivery", userId: { $in: userIds }, deletedAt: null }),
         Transaction.find({
           status: "Approved",
@@ -79,7 +79,7 @@ export async function GET() {
           },
         ]),
         Expense.aggregate([
-          { $match: { status: "Approved", userId: { $in: userIds }, deletedAt: null } },
+          { $match: { status: { $in: ["Approved", "approved", "APPROVED", null] }, userId: { $in: userIds }, deletedAt: null } },
           {
             $group: {
               _id: { userId: "$userId", cementType: "$cementType" },
@@ -272,7 +272,7 @@ export async function GET() {
           { $group: { _id: "$cementType", totalAmount: { $sum: "$totalAmount" } } },
         ]),
         Expense.aggregate([
-          { $match: { status: "Approved", userId: userObjectId, deletedAt: null } },
+          { $match: { status: { $in: ["Approved", "approved", "APPROVED", null] }, userId: userObjectId, deletedAt: null } },
           { $group: { _id: "$cementType", totalAmount: { $sum: "$amount" } } },
         ]),
       ]);

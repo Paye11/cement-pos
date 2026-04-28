@@ -5,6 +5,18 @@ import Expense from "@/lib/models/expense";
 import Transaction from "@/lib/models/transaction";
 import mongoose from "mongoose";
 
+type ExpenseStatus = "Pending" | "Approved" | "Rejected";
+
+function normalizeExpenseStatus(value: unknown): ExpenseStatus | null {
+  if (value === "Pending" || value === "Approved" || value === "Rejected") return value;
+  if (typeof value !== "string") return null;
+  const v = value.trim().toLowerCase();
+  if (v === "pending") return "Pending";
+  if (v === "approved") return "Approved";
+  if (v === "rejected") return "Rejected";
+  return null;
+}
+
 async function getUserRemainingByType(userId: string) {
   const objectId = new mongoose.Types.ObjectId(userId);
   const [salesAgg, expenseAgg] = await Promise.all([
@@ -18,7 +30,7 @@ async function getUserRemainingByType(userId: string) {
       },
     ]),
     Expense.aggregate([
-      { $match: { userId: objectId, status: "Approved", deletedAt: null } },
+      { $match: { userId: objectId, status: { $in: ["Approved", "approved", null] }, deletedAt: null } },
       {
         $group: {
           _id: "$cementType",
@@ -77,7 +89,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Expense is not available" }, { status: 400 });
     }
 
-    if (expense.status !== "Pending") {
+    if (normalizeExpenseStatus(expense.status) !== "Pending") {
       return NextResponse.json({ error: "Expense has already been processed" }, { status: 400 });
     }
 
@@ -161,7 +173,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Expense has already been deleted" }, { status: 400 });
     }
 
-    if (expense.status !== "Approved") {
+    if (normalizeExpenseStatus(expense.status) !== "Approved") {
       return NextResponse.json({ error: "Only approved expenses can be deleted" }, { status: 400 });
     }
 
@@ -174,4 +186,3 @@ export async function DELETE(
     return NextResponse.json({ error: "Failed to delete expense" }, { status: 500 });
   }
 }
-

@@ -5,6 +5,18 @@ import Expense from "@/lib/models/expense";
 import Transaction from "@/lib/models/transaction";
 import mongoose from "mongoose";
 
+type ExpenseStatus = "Pending" | "Approved" | "Rejected";
+
+function normalizeExpenseStatus(value: unknown): ExpenseStatus | null {
+  if (value === "Pending" || value === "Approved" || value === "Rejected") return value;
+  if (typeof value !== "string") return null;
+  const v = value.trim().toLowerCase();
+  if (v === "pending") return "Pending";
+  if (v === "approved") return "Approved";
+  if (v === "rejected") return "Rejected";
+  return null;
+}
+
 function isValidCementType(value: unknown): value is "42.5" | "32.5" {
   return value === "42.5" || value === "32.5";
 }
@@ -33,7 +45,7 @@ async function getUserSalesAndExpensesByType(userId: string) {
       },
     ]),
     Expense.aggregate([
-      { $match: { userId: objectId, status: "Approved", deletedAt: null } },
+      { $match: { userId: objectId, status: { $in: ["Approved", "approved", null] }, deletedAt: null } },
       {
         $group: {
           _id: "$cementType",
@@ -76,10 +88,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const userIdParam = searchParams.get("userId");
     const statusParam = searchParams.get("status");
-    const status =
-      statusParam === "Pending" || statusParam === "Approved" || statusParam === "Rejected"
-        ? statusParam
-        : null;
+    const status = normalizeExpenseStatus(statusParam);
 
     const query: Record<string, unknown> = {};
     if (isAdmin(session) && userIdParam) {
@@ -88,9 +97,9 @@ export async function GET(request: NextRequest) {
       query.userId = session.userId;
     }
     if (isAdmin(session) && status) {
-      query.status = status;
+      query.status = { $in: [status, status.toLowerCase(), status.toUpperCase()] };
     } else if (!isAdmin(session) && status) {
-      query.status = status;
+      query.status = { $in: [status, status.toLowerCase(), status.toUpperCase()] };
     }
     query.deletedAt = null;
 
@@ -138,7 +147,7 @@ export async function GET(request: NextRequest) {
         cementType: e.cementType,
         amount: e.amount,
         note: e.note,
-        status: e.status,
+        status: normalizeExpenseStatus(e.status) ?? "Approved",
         requestedAt: e.requestedAt,
         reviewedAt: e.reviewedAt,
         reviewedBy: e.reviewedBy ? e.reviewedBy.toString() : null,
