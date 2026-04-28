@@ -77,6 +77,9 @@ interface ExpenseItem {
   cementType: "42.5" | "32.5";
   amount: number;
   note?: string;
+  status: "Pending" | "Approved" | "Rejected";
+  requestedAt?: string;
+  rejectionReason?: string;
   createdAt: string;
 }
 
@@ -173,7 +176,7 @@ export default function SellerDashboard() {
         return;
       }
 
-      toast.success("Expense recorded");
+      toast.success("Expense request submitted");
       setExpenseForm((prev) => ({ ...prev, amountDollars: "", note: "" }));
       setExpenseSummary(data.summary || null);
       await refreshExpenses();
@@ -343,6 +346,7 @@ export default function SellerDashboard() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Cement Type</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Note</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
@@ -351,11 +355,16 @@ export default function SellerDashboard() {
                   {expenses.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="text-muted-foreground">
-                        {formatDateTime(item.createdAt)}
+                        {formatDateTime(item.requestedAt || item.createdAt)}
                       </TableCell>
                       <TableCell className="font-medium">Cement {item.cementType}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={item.status} />
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {item.note || "-"}
+                        {item.status === "Rejected" && item.rejectionReason
+                          ? `${item.note || "-"} (Rejected: ${item.rejectionReason})`
+                          : item.note || "-"}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(item.amount)}

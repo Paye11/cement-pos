@@ -41,22 +41,48 @@ interface Transaction {
   createdAt: string;
 }
 
+interface ExpenseRequest {
+  id: string;
+  seller: { name: string; username: string } | null;
+  cementType: "42.5" | "32.5";
+  amount: number;
+  note?: string;
+  status: "Pending" | "Approved" | "Rejected";
+  requestedAt?: string;
+  createdAt: string;
+}
+
 export default function ApprovalsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [expenseRequests, setExpenseRequests] = useState<ExpenseRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [rejectDialog, setRejectDialog] = useState<{
     open: boolean;
     transactionId: string | null;
   }>({ open: false, transactionId: null });
   const [rejectReason, setRejectReason] = useState("");
+  const [expenseRejectDialog, setExpenseRejectDialog] = useState<{
+    open: boolean;
+    expenseId: string | null;
+  }>({ open: false, expenseId: null });
+  const [expenseRejectReason, setExpenseRejectReason] = useState("");
 
-  const fetchTransactions = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch("/api/transactions?status=Pending");
-      if (response.ok) {
-        const data = await response.json();
+      const [transactionsRes, expensesRes] = await Promise.all([
+        fetch("/api/transactions?status=Pending"),
+        fetch("/api/expenses?status=Pending&limit=50"),
+      ]);
+
+      if (transactionsRes.ok) {
+        const data = await transactionsRes.json();
         setTransactions(data.transactions);
+      }
+
+      if (expensesRes.ok) {
+        const data = await expensesRes.json();
+        setExpenseRequests(data.expenses || []);
       }
     } catch (error) {
       console.error("Failed to fetch transactions:", error);
@@ -67,11 +93,11 @@ export default function ApprovalsPage() {
   };
 
   useEffect(() => {
-    fetchTransactions();
+    fetchData();
   }, []);
 
   const handleApprove = async (id: string) => {
-    setProcessingId(id);
+    setProcessingKey(`t:${id}`);
     try {
       const response = await fetch(`/api/transactions/${id}/approve`, {
         method: "POST",
@@ -87,14 +113,14 @@ export default function ApprovalsPage() {
     } catch {
       toast.error("Failed to approve transaction");
     } finally {
-      setProcessingId(null);
+      setProcessingKey(null);
     }
   };
 
   const handleReject = async () => {
     if (!rejectDialog.transactionId) return;
 
-    setProcessingId(rejectDialog.transactionId);
+    setProcessingKey(`t:${rejectDialog.transactionId}`);
     try {
       const response = await fetch(
         `/api/transactions/${rejectDialog.transactionId}/reject`,
@@ -119,7 +145,57 @@ export default function ApprovalsPage() {
     } catch {
       toast.error("Failed to reject transaction");
     } finally {
-      setProcessingId(null);
+      setProcessingKey(null);
+    }
+  };
+
+  const handleApproveExpense = async (id: string) => {
+    setProcessingKey(`e:${id}`);
+    try {
+      const response = await fetch(`/api/expenses/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        toast.success("Expense approved successfully");
+        setExpenseRequests((prev) => prev.filter((e) => e.id !== id));
+      } else {
+        toast.error(data.error || "Failed to approve expense");
+      }
+    } catch {
+      toast.error("Failed to approve expense");
+    } finally {
+      setProcessingKey(null);
+    }
+  };
+
+  const handleRejectExpense = async () => {
+    if (!expenseRejectDialog.expenseId) return;
+
+    setProcessingKey(`e:${expenseRejectDialog.expenseId}`);
+    try {
+      const response = await fetch(`/api/expenses/${expenseRejectDialog.expenseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", reason: expenseRejectReason }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        toast.success("Expense rejected");
+        setExpenseRequests((prev) => prev.filter((e) => e.id !== expenseRejectDialog.expenseId));
+        setExpenseRejectDialog({ open: false, expenseId: null });
+        setExpenseRejectReason("");
+      } else {
+        toast.error(data.error || "Failed to reject expense");
+      }
+    } catch {
+      toast.error("Failed to reject expense");
+    } finally {
+      setProcessingKey(null);
     }
   };
 
@@ -144,7 +220,7 @@ export default function ApprovalsPage() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Pending Approvals</CardTitle>
+          <CardTitle>Pending Transaction Approvals</CardTitle>
         </CardHeader>
         <CardContent>
           {transactions.length > 0 ? (
@@ -212,10 +288,10 @@ export default function ApprovalsPage() {
                         <Button
                           size="sm"
                           onClick={() => handleApprove(transaction.id)}
-                          disabled={processingId === transaction.id}
+                          disabled={processingKey === `t:${transaction.id}`}
                           className="bg-accent hover:bg-accent/90"
                         >
-                          {processingId === transaction.id ? (
+                          {processingKey === `t:${transaction.id}` ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <Check className="h-4 w-4" />
@@ -231,7 +307,7 @@ export default function ApprovalsPage() {
                               transactionId: transaction.id,
                             })
                           }
-                          disabled={processingId === transaction.id}
+                          disabled={processingKey === `t:${transaction.id}`}
                         >
                           <X className="h-4 w-4" />
                           <span className="ml-1">Reject</span>
@@ -251,6 +327,91 @@ export default function ApprovalsPage() {
               <p className="text-muted-foreground">
                 No pending transactions to review
               </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Expense Requests</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {expenseRequests.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Seller</TableHead>
+                  <TableHead>Cement Type</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expenseRequests.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">
+                          {expense.seller?.name || "Unknown"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          @{expense.seller?.username || "unknown"}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">Cement {expense.cementType}</TableCell>
+                    <TableCell className="text-muted-foreground">{expense.note || "-"}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(expense.amount)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(expense.requestedAt || expense.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApproveExpense(expense.id)}
+                          disabled={processingKey === `e:${expense.id}`}
+                          className="bg-accent hover:bg-accent/90"
+                        >
+                          {processingKey === `e:${expense.id}` ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                          <span className="ml-1">Approve</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() =>
+                            setExpenseRejectDialog({
+                              open: true,
+                              expenseId: expense.id,
+                            })
+                          }
+                          disabled={processingKey === `e:${expense.id}`}
+                        >
+                          <X className="h-4 w-4" />
+                          <span className="ml-1">Reject</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mb-4">
+                <Check className="h-6 w-6 text-accent" />
+              </div>
+              <h3 className="text-lg font-medium mb-1">All caught up!</h3>
+              <p className="text-muted-foreground">No pending expense requests to review</p>
             </div>
           )}
         </CardContent>
@@ -290,12 +451,51 @@ export default function ApprovalsPage() {
             <Button
               variant="destructive"
               onClick={handleReject}
-              disabled={processingId !== null}
+              disabled={processingKey !== null}
             >
-              {processingId ? (
+              {processingKey ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Reject Transaction
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={expenseRejectDialog.open}
+        onOpenChange={(open) => {
+          setExpenseRejectDialog({ open, expenseId: null });
+          setExpenseRejectReason("");
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Expense</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this expense request. This will be visible to the
+              seller.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="expense-reason">Reason (optional)</Label>
+            <Textarea
+              id="expense-reason"
+              placeholder="Enter rejection reason..."
+              value={expenseRejectReason}
+              onChange={(e) => setExpenseRejectReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExpenseRejectDialog({ open: false, expenseId: null })}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRejectExpense} disabled={processingKey !== null}>
+              {processingKey ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Reject Expense
             </Button>
           </DialogFooter>
         </DialogContent>

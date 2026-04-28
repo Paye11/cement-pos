@@ -28,6 +28,7 @@ import { SellerDetailsModal } from "@/components/admin/seller-details";
 
 interface DashboardStats {
   pendingCount: number;
+  pendingExpenseCount?: number;
   waitingForDeliveryCount: number;
   todayBags: number;
   todayRevenue: number;
@@ -107,6 +108,28 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
+      {(() => {
+        const pendingExpenseCount = stats.pendingExpenseCount ?? 0;
+        if (pendingExpenseCount < 1) return null;
+        return (
+          <Card className="border-warning/50 bg-warning/5">
+            <CardContent className="flex items-center gap-3 py-4">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              <div>
+                <p className="font-medium text-warning-foreground">Expense Requests</p>
+                <p className="text-sm text-muted-foreground">
+                  {pendingExpenseCount} expense request{pendingExpenseCount === 1 ? "" : "s"} awaiting your
+                  approval
+                </p>
+              </div>
+              <Button asChild variant="outline" className="ml-auto">
+                <Link href="/admin/approvals">Review</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Low Stock Warnings */}
       {stats.lowStockWarnings.length > 0 && (
         <Card className="border-warning/50 bg-warning/5">
@@ -131,11 +154,11 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard
-          title="Pending Approvals"
-          value={stats.pendingCount}
+          title="Pending Requests"
+          value={stats.pendingCount + (stats.pendingExpenseCount ?? 0)}
           icon={ClipboardCheck}
-          description="Awaiting your review"
-          variant={stats.pendingCount > 0 ? "warning" : "default"}
+          description="Transactions & expenses"
+          variant={stats.pendingCount + (stats.pendingExpenseCount ?? 0) > 0 ? "warning" : "default"}
         />
         <StatCard
           title="Waiting Delivery"

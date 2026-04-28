@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -27,6 +28,9 @@ interface ExpenseItem {
   cementType: "42.5" | "32.5";
   amount: number;
   note?: string;
+  status: "Pending" | "Approved" | "Rejected";
+  requestedAt?: string;
+  rejectionReason?: string;
   createdAt: string;
 }
 
@@ -64,6 +68,25 @@ export function UserExpenseManagement({ userId, userName }: UserExpenseManagemen
       toast.error("Failed to load expenses");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    const confirmed = window.confirm("Delete this approved expense?");
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/expenses/${expenseId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Failed to delete expense");
+        return;
+      }
+      toast.success("Expense deleted");
+      await fetchExpenses();
+    } catch (error) {
+      console.error("Failed to delete expense:", error);
+      toast.error("Failed to delete expense");
     }
   };
 
@@ -160,20 +183,40 @@ export function UserExpenseManagement({ userId, userName }: UserExpenseManagemen
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Cement Type</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Note</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {expenses.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="text-muted-foreground">
-                        {formatDateTime(item.createdAt)}
+                        {formatDateTime(item.requestedAt || item.createdAt)}
                       </TableCell>
                       <TableCell className="font-medium">Cement {item.cementType}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.note || "-"}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={item.status} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {item.status === "Rejected" && item.rejectionReason
+                          ? `${item.note || "-"} (Rejected: ${item.rejectionReason})`
+                          : item.note || "-"}
+                      </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(item.amount)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.status === "Approved" ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteExpense(item.id)}
+                          >
+                            Delete
+                          </Button>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -33,7 +33,7 @@ async function getUserSalesAndExpensesByType(userId: string) {
       },
     ]),
     Expense.aggregate([
-      { $match: { userId: objectId, deletedAt: null } },
+      { $match: { userId: objectId, status: "Approved", deletedAt: null } },
       {
         $group: {
           _id: "$cementType",
@@ -75,6 +75,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "20");
     const userIdParam = searchParams.get("userId");
+    const statusParam = searchParams.get("status");
+    const status =
+      statusParam === "Pending" || statusParam === "Approved" || statusParam === "Rejected"
+        ? statusParam
+        : null;
 
     const query: Record<string, unknown> = {};
     if (isAdmin(session) && userIdParam) {
@@ -82,9 +87,18 @@ export async function GET(request: NextRequest) {
     } else if (!isAdmin(session)) {
       query.userId = session.userId;
     }
+    if (isAdmin(session) && status) {
+      query.status = status;
+    } else if (!isAdmin(session) && status) {
+      query.status = status;
+    }
     query.deletedAt = null;
 
-    const expenses = await Expense.find(query).sort({ createdAt: -1 }).limit(limit);
+    const expensesQuery = Expense.find(query).sort({ createdAt: -1 }).limit(limit);
+    if (isAdmin(session)) {
+      expensesQuery.populate("userId", "name username");
+    }
+    const expenses = await expensesQuery;
 
     const summaryUserId =
       isAdmin(session) && userIdParam ? userIdParam : !isAdmin(session) ? session.userId : null;
@@ -93,11 +107,42 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       expenses: expenses.map((e) => ({
+        ...(function () {
+          const rawUser = e.userId as unknown as
+            | mongoose.Types.ObjectId
+            | { _id: mongoose.Types.ObjectId; name?: string; username?: string }
+            | null;
+
+          const userId =
+            rawUser && typeof rawUser === "object" && "_id" in rawUser
+              ? rawUser._id.toString()
+              : rawUser
+                ? (rawUser as mongoose.Types.ObjectId).toString()
+                : "";
+
+          const seller =
+            isAdmin(session) &&
+            rawUser &&
+            typeof rawUser === "object" &&
+            "name" in rawUser &&
+            typeof rawUser.name === "string"
+              ? {
+                  name: rawUser.name,
+                  username: typeof rawUser.username === "string" ? rawUser.username : "",
+                }
+              : null;
+
+          return { userId, seller };
+        })(),
         id: e._id.toString(),
-        userId: e.userId.toString(),
         cementType: e.cementType,
         amount: e.amount,
         note: e.note,
+        status: e.status,
+        requestedAt: e.requestedAt,
+        reviewedAt: e.reviewedAt,
+        reviewedBy: e.reviewedBy ? e.reviewedBy.toString() : null,
+        rejectionReason: e.rejectionReason,
         createdAt: e.createdAt,
       })),
       summary,
@@ -154,6 +199,10 @@ export async function POST(request: NextRequest) {
       cementType,
       amount,
       note: note || undefined,
+      status: "Pending",
+      requestedAt: new Date(),
+      reviewedAt: null,
+      reviewedBy: null,
       deletedAt: null,
     });
 
@@ -164,6 +213,8 @@ export async function POST(request: NextRequest) {
         cementType: expense.cementType,
         amount: expense.amount,
         note: expense.note,
+        status: expense.status,
+        requestedAt: expense.requestedAt,
         createdAt: expense.createdAt,
       },
       summary: await getUserSalesAndExpensesByType(session.userId),
