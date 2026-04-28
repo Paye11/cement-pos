@@ -17,6 +17,10 @@ function normalizeExpenseStatus(value: unknown): ExpenseStatus | null {
   return null;
 }
 
+function buildStatusRegex(status: ExpenseStatus): { $regex: RegExp } {
+  return { $regex: new RegExp(`^${status}\\s*$`, "i") };
+}
+
 function isValidCementType(value: unknown): value is "42.5" | "32.5" {
   return value === "42.5" || value === "32.5";
 }
@@ -45,7 +49,13 @@ async function getUserSalesAndExpensesByType(userId: string) {
       },
     ]),
     Expense.aggregate([
-      { $match: { userId: objectId, status: { $in: ["Approved", "approved", null] }, deletedAt: null } },
+      {
+        $match: {
+          userId: objectId,
+          deletedAt: null,
+          $or: [{ status: null }, { status: buildStatusRegex("Approved") }],
+        },
+      },
       {
         $group: {
           _id: "$cementType",
@@ -97,9 +107,9 @@ export async function GET(request: NextRequest) {
       query.userId = session.userId;
     }
     if (isAdmin(session) && status) {
-      query.status = { $in: [status, status.toLowerCase(), status.toUpperCase()] };
+      query.status = buildStatusRegex(status);
     } else if (!isAdmin(session) && status) {
-      query.status = { $in: [status, status.toLowerCase(), status.toUpperCase()] };
+      query.status = buildStatusRegex(status);
     }
     query.deletedAt = null;
 

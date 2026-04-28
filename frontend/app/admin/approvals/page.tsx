@@ -72,7 +72,7 @@ export default function ApprovalsPage() {
     try {
       const [transactionsRes, expensesRes] = await Promise.all([
         fetch("/api/transactions?status=Pending", { cache: "no-store" }),
-        fetch("/api/expenses?status=Pending&limit=50", { cache: "no-store" }),
+        fetch("/api/expenses?limit=200", { cache: "no-store" }),
       ]);
 
       if (transactionsRes.ok) {
@@ -85,7 +85,8 @@ export default function ApprovalsPage() {
 
       if (expensesRes.ok) {
         const data = await expensesRes.json();
-        setExpenseRequests(data.expenses || []);
+        const allExpenses = (data.expenses || []) as ExpenseRequest[];
+        setExpenseRequests(allExpenses.filter((e) => e.status === "Pending"));
       } else {
         const data = await expensesRes.json().catch(() => ({}));
         toast.error(data.error || "Failed to load pending expense requests");
