@@ -238,8 +238,9 @@ export default function AdminDocumentsPage() {
       form.append("folder", sign.folder);
       form.append("signature", sign.signature);
 
+      const resourceType = fileType === "pdf" ? "raw" : "image";
       const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${sign.cloudName}/auto/upload`,
+        `https://api.cloudinary.com/v1_1/${encodeURIComponent(String(sign.cloudName))}/${resourceType}/upload`,
         { method: "POST", body: form }
       );
       const uploaded = await uploadRes.json().catch(() => ({}));
