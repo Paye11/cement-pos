@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { getSession, isAdmin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Announcement from "@/lib/models/announcement";
+import "@/lib/models/user";
 
 function parseIsoDate(value: unknown): Date | null {
   if (typeof value !== "string") return null;
@@ -105,4 +106,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create announcement" }, { status: 500 });
   }
 }
-
