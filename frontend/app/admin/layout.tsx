@@ -11,6 +11,7 @@ import {
   Package,
   BarChart3,
   History,
+  FileText,
   LogOut,
   Trash2,
 } from "lucide-react";
@@ -42,6 +43,11 @@ const navItems = [
     title: "Pending Approvals",
     href: "/admin/approvals",
     icon: ClipboardCheck,
+  },
+  {
+    title: "Documents",
+    href: "/admin/documents",
+    icon: FileText,
   },
   {
     title: "User Management",

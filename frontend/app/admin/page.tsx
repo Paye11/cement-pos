@@ -9,9 +9,11 @@ import {
   Users,
   AlertTriangle,
   TrendingUp,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -71,18 +73,38 @@ interface DashboardStats {
   }>;
 }
 
+interface SellerDocumentItem {
+  id: string;
+  seller: { id: string; name: string; username: string } | null;
+  category: "Receipt" | "Document";
+  title: string;
+  fileType: "image" | "pdf";
+  url: string;
+  createdAt: string;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentDocuments, setRecentDocuments] = useState<SellerDocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSeller, setSelectedSeller] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const response = await fetch("/api/stats/dashboard");
-        if (response.ok) {
-          const data = await response.json();
+        const [statsRes, docsRes] = await Promise.all([
+          fetch("/api/stats/dashboard", { cache: "no-store" }),
+          fetch("/api/documents?box=inbox&limit=5", { cache: "no-store" }),
+        ]);
+
+        if (statsRes.ok) {
+          const data = await statsRes.json();
           setStats(data);
+        }
+
+        if (docsRes.ok) {
+          const data = await docsRes.json();
+          setRecentDocuments(data.documents || []);
         }
       } catch (error) {
         console.error("Failed to fetch stats:", error);
@@ -108,6 +130,59 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
+      <Card className={recentDocuments.length > 0 ? "border-accent/30 bg-accent/5" : undefined}>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Seller Documents
+          </CardTitle>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/documents">Open</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {recentDocuments.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Seller</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Open</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentDocuments.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="text-muted-foreground">{formatDateTime(d.createdAt)}</TableCell>
+                    <TableCell className="font-medium">
+                      {d.seller?.name || "Unknown"}
+                      <div className="text-xs text-muted-foreground">@{d.seller?.username || "-"}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{d.category}</Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">{d.title}</TableCell>
+                    <TableCell className="text-muted-foreground">{d.fileType === "pdf" ? "PDF" : "Image"}</TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="outline" size="sm">
+                        <a href={d.url} target="_blank" rel="noreferrer">
+                          View
+                        </a>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-6">No seller documents yet.</p>
+          )}
+        </CardContent>
+      </Card>
+
       {(() => {
         const pendingExpenseCount = stats.pendingExpenseCount ?? 0;
         if (pendingExpenseCount < 1) return null;

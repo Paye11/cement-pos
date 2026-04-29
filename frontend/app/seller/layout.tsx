@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   PlusCircle,
   History,
+  FileText,
   LogOut,
 } from "lucide-react";
 import {
@@ -41,6 +42,11 @@ const navItems = [
     title: "My Sales",
     href: "/seller/sales",
     icon: History,
+  },
+  {
+    title: "Documents",
+    href: "/seller/documents",
+    icon: FileText,
   },
 ];
 
