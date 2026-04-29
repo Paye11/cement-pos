@@ -200,7 +200,14 @@ export default function SellerDocumentsPage() {
       );
       const uploaded = await uploadRes.json().catch(() => ({}));
       if (!uploadRes.ok || !uploaded?.secure_url || !uploaded?.public_id) {
-        toast.error(uploaded?.error?.message || "Cloud upload failed");
+        const message = uploaded?.error?.message || "Cloud upload failed";
+        if (typeof message === "string" && message.toLowerCase().includes("invalid cloud_name")) {
+          toast.error(
+            "Cloudinary setup error: check CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET in the Vercel 'cement-pos' project, then redeploy."
+          );
+        } else {
+          toast.error(message);
+        }
         return;
       }
 
