@@ -12,6 +12,7 @@ import {
   BarChart3,
   History,
   FileText,
+  Megaphone,
   LogOut,
   Trash2,
 } from "lucide-react";
@@ -48,6 +49,11 @@ const navItems = [
     title: "Documents",
     href: "/admin/documents",
     icon: FileText,
+  },
+  {
+    title: "Announcements",
+    href: "/admin/announcements",
+    icon: Megaphone,
   },
   {
     title: "User Management",

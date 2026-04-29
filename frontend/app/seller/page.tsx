@@ -89,12 +89,21 @@ interface ExpenseSummary {
   remaining: { "42.5": number; "32.5": number };
 }
 
+interface AnnouncementItem {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
 export default function SellerDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [prices, setPrices] = useState<Price[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [expenseForm, setExpenseForm] = useState({
     cementType: "42.5" as "42.5" | "32.5",
     amountDollars: "",
@@ -105,26 +114,32 @@ export default function SellerDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [statsRes, pricesRes, expensesRes] = await Promise.all([
+        const [statsRes, pricesRes, expensesRes, announcementsRes] = await Promise.allSettled([
           fetch("/api/stats/dashboard"),
           fetch("/api/prices"),
           fetch("/api/expenses?limit=10"),
+          fetch("/api/announcements?limit=5", { cache: "no-store" }),
         ]);
 
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
+        if (statsRes.status === "fulfilled" && statsRes.value.ok) {
+          const statsData = await statsRes.value.json();
           setStats(statsData);
         }
 
-        if (pricesRes.ok) {
-          const pricesData = await pricesRes.json();
+        if (pricesRes.status === "fulfilled" && pricesRes.value.ok) {
+          const pricesData = await pricesRes.value.json();
           setPrices(pricesData.prices);
         }
 
-        if (expensesRes.ok) {
-          const expensesData = await expensesRes.json();
+        if (expensesRes.status === "fulfilled" && expensesRes.value.ok) {
+          const expensesData = await expensesRes.value.json();
           setExpenses(expensesData.expenses || []);
           setExpenseSummary(expensesData.summary || null);
+        }
+
+        if (announcementsRes.status === "fulfilled" && announcementsRes.value.ok) {
+          const aData = await announcementsRes.value.json();
+          setAnnouncements(aData.announcements || []);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -205,6 +220,34 @@ export default function SellerDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
+      {announcements.length > 0 && (
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-base font-medium">Announcements</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {announcements.map((a) => (
+              <div key={a.id} className="rounded-lg border bg-muted/10 p-4">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold">{a.title}</p>
+                    <p className="text-xs text-muted-foreground whitespace-nowrap">
+                      Expires: {formatDateTime(a.expiresAt)}
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {a.message}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Posted: {formatDateTime(a.createdAt)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Action */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="flex items-center justify-between py-4">
