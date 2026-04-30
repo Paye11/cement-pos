@@ -2,7 +2,10 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
+  centerName?: string;
   name: string;
+  location?: string;
+  contact?: string;
   username: string;
   password: string;
   role: "admin" | "user";
@@ -15,11 +18,29 @@ export interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>(
   {
+    centerName: {
+      type: String,
+      trim: true,
+      maxlength: [120, "Center name cannot exceed 120 characters"],
+      default: "",
+    },
     name: {
       type: String,
       required: [true, "Name is required"],
       trim: true,
       maxlength: [100, "Name cannot exceed 100 characters"],
+    },
+    location: {
+      type: String,
+      trim: true,
+      maxlength: [200, "Location cannot exceed 200 characters"],
+      default: "",
+    },
+    contact: {
+      type: String,
+      trim: true,
+      maxlength: [60, "Contact cannot exceed 60 characters"],
+      default: "",
     },
     username: {
       type: String,

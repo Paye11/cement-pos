@@ -21,8 +21,14 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const body = await request.json();
-    const { name, username, status, password } = body;
+    const body = await request.json().catch(() => ({}));
+    const centerName = typeof body?.centerName === "string" ? body.centerName.trim() : null;
+    const name = typeof body?.name === "string" ? body.name.trim() : null;
+    const location = typeof body?.location === "string" ? body.location.trim() : null;
+    const contact = typeof body?.contact === "string" ? body.contact.trim() : null;
+    const username = typeof body?.username === "string" ? body.username : null;
+    const status = body?.status;
+    const password = typeof body?.password === "string" ? body.password : null;
 
     await connectToDatabase();
 
@@ -48,7 +54,7 @@ export async function PUT(
     }
 
     // Check if new username conflicts with existing
-    if (username && username !== user.username) {
+    if (username && username.toLowerCase().trim() !== user.username) {
       const existingUser = await User.findOne({
         username: username.toLowerCase().trim(),
         _id: { $ne: id },
@@ -62,7 +68,10 @@ export async function PUT(
     }
 
     // Update fields
-    if (name) user.name = name.trim();
+    if (centerName !== null) user.centerName = centerName;
+    if (name !== null) user.name = name;
+    if (location !== null) user.location = location;
+    if (contact !== null) user.contact = contact;
     if (username) user.username = username.toLowerCase().trim();
     if (status) user.status = status;
     if (password) {
@@ -81,7 +90,10 @@ export async function PUT(
       success: true,
       user: {
         id: user._id.toString(),
+        centerName: user.centerName || "",
         name: user.name,
+        location: user.location || "",
+        contact: user.contact || "",
         username: user.username,
         role: user.role,
         status: user.status,

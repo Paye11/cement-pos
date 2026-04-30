@@ -50,7 +50,10 @@ import { UserExpenseManagement } from "@/components/admin/user-expense-managemen
 
 interface User {
   id: string;
+  centerName: string;
   name: string;
+  location: string;
+  contact: string;
   username: string;
   role: string;
   status: "active" | "inactive";
@@ -58,7 +61,10 @@ interface User {
 }
 
 interface FormData {
+  centerName: string;
   name: string;
+  location: string;
+  contact: string;
   username: string;
   password: string;
   status: "active" | "inactive";
@@ -78,7 +84,10 @@ export default function UsersPage() {
     userId: string | null;
   }>({ open: false, userId: null });
   const [formData, setFormData] = useState<FormData>({
+    centerName: "",
     name: "",
+    location: "",
+    contact: "",
     username: "",
     password: "",
     status: "active",
@@ -108,12 +117,27 @@ export default function UsersPage() {
   }, []);
 
   const resetForm = () => {
-    setFormData({ name: "", username: "", password: "", status: "active" });
+    setFormData({
+      centerName: "",
+      name: "",
+      location: "",
+      contact: "",
+      username: "",
+      password: "",
+      status: "active",
+    });
     setInitialStock({ "42.5": "", "32.5": "" });
   };
 
   const handleCreate = async () => {
-    if (!formData.name || !formData.username || !formData.password) {
+    if (
+      !formData.centerName ||
+      !formData.name ||
+      !formData.location ||
+      !formData.contact ||
+      !formData.username ||
+      !formData.password
+    ) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -158,7 +182,10 @@ export default function UsersPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          centerName: formData.centerName,
           name: formData.name,
+          location: formData.location,
+          contact: formData.contact,
           username: formData.username,
           status: formData.status,
           ...(formData.password && { password: formData.password }),
@@ -210,7 +237,10 @@ export default function UsersPage() {
 
   const openEditDialog = (user: User) => {
     setFormData({
+      centerName: user.centerName || "",
       name: user.name,
+      location: user.location || "",
+      contact: user.contact || "",
       username: user.username,
       password: "",
       status: user.status,
@@ -256,7 +286,18 @@ export default function UsersPage() {
               </DialogHeader>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="centerName">Center Name</Label>
+                  <Input
+                    id="centerName"
+                    value={formData.centerName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, centerName: e.target.value })
+                    }
+                    placeholder="Center name"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="name">Seller Name</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -265,6 +306,30 @@ export default function UsersPage() {
                     }
                     placeholder="Full name"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="location">Location</Label>
+                    <Input
+                      id="location"
+                      value={formData.location}
+                      onChange={(e) =>
+                        setFormData({ ...formData, location: e.target.value })
+                      }
+                      placeholder="Location"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="contact">Contact</Label>
+                    <Input
+                      id="contact"
+                      value={formData.contact}
+                      onChange={(e) =>
+                        setFormData({ ...formData, contact: e.target.value })
+                      }
+                      placeholder="Phone"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="username">Username</Label>
@@ -445,7 +510,17 @@ export default function UsersPage() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-centerName">Center Name</Label>
+              <Input
+                id="edit-centerName"
+                value={formData.centerName}
+                onChange={(e) =>
+                  setFormData({ ...formData, centerName: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-name">Seller Name</Label>
               <Input
                 id="edit-name"
                 value={formData.name}
@@ -453,6 +528,28 @@ export default function UsersPage() {
                   setFormData({ ...formData, name: e.target.value })
                 }
               />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-location">Location</Label>
+                <Input
+                  id="edit-location"
+                  value={formData.location}
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-contact">Contact</Label>
+                <Input
+                  id="edit-contact"
+                  value={formData.contact}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contact: e.target.value })
+                  }
+                />
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="edit-username">Username</Label>

@@ -22,7 +22,10 @@ export async function GET() {
     return NextResponse.json({
       users: users.map((u) => ({
         id: u._id.toString(),
+        centerName: u.centerName || "",
         name: u.name,
+        location: u.location || "",
+        contact: u.contact || "",
         username: u.username,
         role: u.role,
         status: u.status,
@@ -46,17 +49,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { name, username, password, initialStock } = body as {
-      name?: string;
-      username?: string;
-      password?: string;
-      initialStock?: Partial<Record<"42.5" | "32.5", number>>;
-    };
+    const body = await request.json().catch(() => ({}));
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+    const centerName = typeof body?.centerName === "string" ? body.centerName.trim() : "";
+    const location = typeof body?.location === "string" ? body.location.trim() : "";
+    const contact = typeof body?.contact === "string" ? body.contact.trim() : "";
+    const username = typeof body?.username === "string" ? body.username : "";
+    const password = typeof body?.password === "string" ? body.password : "";
+    const initialStock = (body?.initialStock || {}) as Partial<Record<"42.5" | "32.5", number>>;
 
-    if (!name || !username || !password) {
+    if (!centerName || !name || !location || !contact || !username || !password) {
       return NextResponse.json(
-        { error: "Name, username, and password are required" },
+        { error: "Center name, seller name, location, contact, username, and password are required" },
         { status: 400 }
       );
     }
@@ -150,7 +154,10 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password);
 
     const user = await User.create({
-      name: name.trim(),
+      centerName,
+      name,
+      location,
+      contact,
       username: username.toLowerCase().trim(),
       password: hashedPassword,
       role: "user",
@@ -222,7 +229,10 @@ export async function POST(request: NextRequest) {
       success: true,
       user: {
         id: user._id.toString(),
+        centerName: user.centerName || "",
         name: user.name,
+        location: user.location || "",
+        contact: user.contact || "",
         username: user.username,
         role: user.role,
         status: user.status,
