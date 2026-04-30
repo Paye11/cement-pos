@@ -8,6 +8,8 @@ import {
   PlusCircle,
   History,
   FileText,
+  ClipboardList,
+  CalendarDays,
   LogOut,
 } from "lucide-react";
 import {
@@ -34,6 +36,11 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
+    title: "Daily Reports",
+    href: "/seller/daily-reports",
+    icon: ClipboardList,
+  },
+  {
     title: "New Sale",
     href: "/seller/new-sale",
     icon: PlusCircle,
@@ -47,6 +54,11 @@ const navItems = [
     title: "Documents",
     href: "/seller/documents",
     icon: FileText,
+  },
+  {
+    title: "Holidays",
+    href: "/seller/holidays",
+    icon: CalendarDays,
   },
 ];
 

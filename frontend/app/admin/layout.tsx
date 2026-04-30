@@ -6,11 +6,13 @@ import Image from "next/image";
 import {
   LayoutDashboard,
   ClipboardCheck,
+  ClipboardList,
   Users,
   DollarSign,
   Package,
   BarChart3,
   History,
+  CalendarDays,
   FileText,
   Megaphone,
   LogOut,
@@ -54,6 +56,16 @@ const navItems = [
     title: "Announcements",
     href: "/admin/announcements",
     icon: Megaphone,
+  },
+  {
+    title: "Daily Reports",
+    href: "/admin/daily-reports",
+    icon: ClipboardList,
+  },
+  {
+    title: "Holidays",
+    href: "/admin/holidays",
+    icon: CalendarDays,
   },
   {
     title: "User Management",
