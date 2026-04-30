@@ -133,22 +133,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check user inventory
-    const userInventory = await UserInventory.findOne({
-      userId: session.userId,
-      cementType,
-      deletedAt: null,
-    });
+    let userInventory: { remainingStock: number; save: () => Promise<unknown> } | null = null;
+    if (!isAdvance) {
+      userInventory = await UserInventory.findOne({
+        userId: session.userId,
+        cementType,
+        deletedAt: null,
+      });
 
-    if (!isAdvance && (!userInventory || userInventory.remainingStock < bagsSold)) {
-      return NextResponse.json(
-        {
-          error: `Insufficient user stock. You only have ${
-            userInventory?.remainingStock || 0
-          } bags assigned.`,
-        },
-        { status: 400 }
-      );
+      if (!userInventory || userInventory.remainingStock < bagsSold) {
+        return NextResponse.json(
+          {
+            error: `Insufficient user stock. You only have ${
+              userInventory?.remainingStock || 0
+            } bags assigned.`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Determine price to use
@@ -187,6 +189,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (!isAdvance) {
+      if (!userInventory) {
+        return NextResponse.json({ error: "User inventory not found" }, { status: 400 });
+      }
       userInventory.remainingStock -= bagsSold;
       await userInventory.save();
     }
