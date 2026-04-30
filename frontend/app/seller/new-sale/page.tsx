@@ -97,6 +97,7 @@ export default function NewSalePage() {
   const originalTotalCents = basePricePerBagCents * bags;
   const differenceCents = useNegotiated ? originalTotalCents - totalCents : 0;
   const availableStock = selectedInventory?.remainingStock || 0;
+  const requiresStockNow = !formData.isAdvancePayment;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +112,7 @@ export default function NewSalePage() {
       return;
     }
 
-    if (bags > availableStock) {
+    if (requiresStockNow && bags > availableStock) {
       toast.error(`Only ${availableStock} bags available in stock`);
       return;
     }
@@ -260,14 +261,14 @@ export default function NewSalePage() {
                 id="bags"
                 type="number"
                 min="1"
-                max={availableStock}
+                max={requiresStockNow ? availableStock : undefined}
                 placeholder="Enter quantity"
                 value={formData.bagsSold}
                 onChange={(e) =>
                   setFormData({ ...formData, bagsSold: e.target.value })
                 }
               />
-              {bags > availableStock && (
+              {requiresStockNow && bags > availableStock && (
                 <p className="text-sm text-destructive">
                   Exceeds available stock ({availableStock} bags)
                 </p>
@@ -400,7 +401,7 @@ export default function NewSalePage() {
                 isSubmitting ||
                 !formData.cementType ||
                 bags < 1 ||
-                bags > availableStock
+                (requiresStockNow && bags > availableStock)
               }
             >
               {isSubmitting ? (

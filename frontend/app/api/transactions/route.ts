@@ -118,6 +118,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const isAdvance = !!isAdvancePayment;
+
     await connectToDatabase();
 
     // Get current price
@@ -136,7 +138,7 @@ export async function POST(request: NextRequest) {
       deletedAt: null,
     });
 
-    if (!userInventory || userInventory.remainingStock < bagsSold) {
+    if (!isAdvance && (!userInventory || userInventory.remainingStock < bagsSold)) {
       return NextResponse.json(
         {
           error: `Insufficient user stock. You only have ${
@@ -154,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     // Determine initial status
     // If advance payment, it waits for delivery before it can be approved
-    const status = isAdvancePayment ? "Waiting for Delivery" : "Pending";
+    const status = isAdvance ? "Waiting for Delivery" : "Pending";
 
     const transaction = await Transaction.create({
       userId: session.userId,
@@ -163,9 +165,9 @@ export async function POST(request: NextRequest) {
       pricePerBag,
       totalAmount,
       status,
-      isAdvancePayment: !!isAdvancePayment,
-      bagsDelivered: isAdvancePayment ? 0 : bagsSold,
-      deliveryStatus: isAdvancePayment ? "Pending" : "Fully Delivered",
+      isAdvancePayment: isAdvance,
+      bagsDelivered: isAdvance ? 0 : bagsSold,
+      deliveryStatus: isAdvance ? "Pending" : "Fully Delivered",
       isNegotiatedPrice: isNegotiated,
       originalPricePerBag: isNegotiated ? price.pricePerBag : undefined,
       deletedAt: null,
@@ -182,7 +184,7 @@ export async function POST(request: NextRequest) {
       deletedAt: null,
     });
 
-    if (!isAdvancePayment) {
+    if (!isAdvance) {
       userInventory.remainingStock -= bagsSold;
       await userInventory.save();
     }
