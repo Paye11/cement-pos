@@ -104,6 +104,7 @@ export default function SellerDashboard() {
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [sellerName, setSellerName] = useState<string>("");
   const [expenseForm, setExpenseForm] = useState({
     cementType: "42.5" as "42.5" | "32.5",
     amountDollars: "",
@@ -114,11 +115,12 @@ export default function SellerDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [statsRes, pricesRes, expensesRes, announcementsRes] = await Promise.allSettled([
+        const [statsRes, pricesRes, expensesRes, announcementsRes, meRes] = await Promise.allSettled([
           fetch("/api/stats/dashboard"),
           fetch("/api/prices"),
           fetch("/api/expenses?limit=10"),
           fetch("/api/announcements?limit=5", { cache: "no-store" }),
+          fetch("/api/auth/me", { cache: "no-store" }),
         ]);
 
         if (statsRes.status === "fulfilled" && statsRes.value.ok) {
@@ -140,6 +142,11 @@ export default function SellerDashboard() {
         if (announcementsRes.status === "fulfilled" && announcementsRes.value.ok) {
           const aData = await announcementsRes.value.json();
           setAnnouncements(aData.announcements || []);
+        }
+
+        if (meRes.status === "fulfilled" && meRes.value.ok) {
+          const meData = await meRes.value.json().catch(() => ({}));
+          setSellerName(typeof meData?.user?.name === "string" ? meData.user.name : "");
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -220,6 +227,12 @@ export default function SellerDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
+      {sellerName ? (
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Welcome, {sellerName}</h2>
+        </div>
+      ) : null}
+
       {announcements.length > 0 && (
         <Card className="border-primary/20">
           <CardHeader>
