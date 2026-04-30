@@ -85,11 +85,17 @@ export default function NewSalePage() {
   const bags = parseInt(formData.bagsSold) || 0;
   
   // Calculate price to use
-  const basePricePerBag = selectedPrice?.pricePerBag || 0;
-  const negotiatedPrice = parseFloat(formData.negotiatedPrice) || 0;
-  const pricePerBag = formData.useNegotiatedPrice ? negotiatedPrice : basePricePerBag;
-  
-  const total = pricePerBag * bags;
+  const basePricePerBagCents = selectedPrice?.pricePerBag || 0;
+  const negotiatedPriceDollars = Number(formData.negotiatedPrice);
+  const negotiatedPriceCents = Number.isFinite(negotiatedPriceDollars)
+    ? Math.round(negotiatedPriceDollars * 100)
+    : 0;
+  const useNegotiated = formData.useNegotiatedPrice && negotiatedPriceCents > 0;
+  const pricePerBagCents = useNegotiated ? negotiatedPriceCents : basePricePerBagCents;
+
+  const totalCents = pricePerBagCents * bags;
+  const originalTotalCents = basePricePerBagCents * bags;
+  const differenceCents = useNegotiated ? originalTotalCents - totalCents : 0;
   const availableStock = selectedInventory?.remainingStock || 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,7 +106,7 @@ export default function NewSalePage() {
       return;
     }
 
-    if (formData.useNegotiatedPrice && negotiatedPrice <= 0) {
+    if (formData.useNegotiatedPrice && negotiatedPriceCents <= 0) {
       toast.error("Please enter a valid negotiated price");
       return;
     }
@@ -119,7 +125,7 @@ export default function NewSalePage() {
           cementType: formData.cementType,
           bagsSold: bags,
           isAdvancePayment: formData.isAdvancePayment,
-          negotiatedPrice: formData.useNegotiatedPrice ? negotiatedPrice : undefined,
+          negotiatedPrice: useNegotiated ? negotiatedPriceCents : undefined,
         }),
       });
 
@@ -181,7 +187,7 @@ export default function NewSalePage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Amount:</span>
                 <span className="font-semibold text-primary">
-                  {formatCurrency(total)}
+                  {formatCurrency(totalCents)}
                 </span>
               </div>
             </div>
@@ -312,7 +318,7 @@ export default function NewSalePage() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Original price: {formatCurrency(basePricePerBag)}
+                    Original price: {formatCurrency(basePricePerBagCents)}
                   </p>
                 </div>
               )}
@@ -327,24 +333,60 @@ export default function NewSalePage() {
                     <span className="text-sm font-medium">Calculation</span>
                   </div>
                   <div className="flex flex-col gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Price per bag:
-                      </span>
-                      <span>{formatCurrency(selectedPrice.pricePerBag)}</span>
-                    </div>
+                    {useNegotiated ? (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Negotiated price/bag:</span>
+                          <span>{formatCurrency(pricePerBagCents)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Original price/bag:</span>
+                          <span className="line-through text-muted-foreground">
+                            {formatCurrency(basePricePerBagCents)}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Price per bag:</span>
+                        <span>{formatCurrency(basePricePerBagCents)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Quantity:</span>
                       <span>{bags} bags</span>
                     </div>
-                    <div className="border-t pt-2 mt-1">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Total Amount:</span>
-                        <span className="font-semibold text-lg text-primary">
-                          {formatCurrency(total)}
-                        </span>
+                    {useNegotiated ? (
+                      <div className="border-t pt-2 mt-1 flex flex-col gap-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Negotiated Total:</span>
+                          <span className="font-semibold text-lg text-primary">
+                            {formatCurrency(totalCents)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Original Total:</span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(originalTotalCents)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Difference:</span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(differenceCents)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="border-t pt-2 mt-1">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Total Amount:</span>
+                          <span className="font-semibold text-lg text-primary">
+                            {formatCurrency(totalCents)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
