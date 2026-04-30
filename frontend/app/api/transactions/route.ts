@@ -94,10 +94,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { cementType, bagsSold, isAdvancePayment, negotiatedPrice } = body;
+    const body = await request.json().catch(() => ({}));
+    const cementType = typeof body?.cementType === "string" ? body.cementType : "";
+    const bagsSold = typeof body?.bagsSold === "number" ? body.bagsSold : Number(body?.bagsSold);
+    const negotiatedPrice =
+      typeof body?.negotiatedPrice === "number" ? body.negotiatedPrice : Number(body?.negotiatedPrice);
+    const isAdvance = body?.isAdvancePayment === true;
 
-    if (!cementType || !bagsSold) {
+    if (!cementType || !Number.isFinite(bagsSold)) {
       return NextResponse.json(
         { error: "Cement type and bags sold are required" },
         { status: 400 }
@@ -117,8 +121,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const isAdvance = !!isAdvancePayment;
 
     await connectToDatabase();
 
@@ -150,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine price to use
-    const isNegotiated = !!negotiatedPrice && negotiatedPrice > 0;
+    const isNegotiated = Number.isFinite(negotiatedPrice) && negotiatedPrice > 0;
     const pricePerBag = isNegotiated ? negotiatedPrice : price.pricePerBag;
     const totalAmount = pricePerBag * bagsSold;
 
