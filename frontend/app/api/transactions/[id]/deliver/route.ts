@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import Transaction from "@/lib/models/transaction";
 import TransactionEvent from "@/lib/models/transaction-event";
+import UserInventory from "@/lib/models/user-inventory";
 
 export async function POST(
   request: NextRequest,
@@ -39,6 +40,26 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    const userInventory = await UserInventory.findOne({
+      userId: transaction.userId,
+      cementType: transaction.cementType,
+      deletedAt: null,
+    });
+
+    if (!userInventory || userInventory.remainingStock < transaction.bagsSold) {
+      return NextResponse.json(
+        {
+          error: `Insufficient stock to deliver. Available: ${
+            userInventory?.remainingStock || 0
+          } bags.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    userInventory.remainingStock -= transaction.bagsSold;
+    await userInventory.save();
 
     // Update transaction to Pending (waiting for admin approval)
     transaction.status = "Pending";

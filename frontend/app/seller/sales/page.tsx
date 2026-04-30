@@ -183,6 +183,7 @@ export default function SalesHistoryPage() {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Waiting for Delivery">Waiting for Delivery</SelectItem>
                   <SelectItem value="Approved">Approved</SelectItem>
                   <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>

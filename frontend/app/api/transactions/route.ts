@@ -182,11 +182,10 @@ export async function POST(request: NextRequest) {
       deletedAt: null,
     });
 
-    // Deduct from user inventory immediately (or reserve it)
-    // Note: If transaction is rejected, we might need to add it back.
-    // For now, let's assume "Pending" means "Reserved" so we deduct it.
-    userInventory.remainingStock -= bagsSold;
-    await userInventory.save();
+    if (!isAdvancePayment) {
+      userInventory.remainingStock -= bagsSold;
+      await userInventory.save();
+    }
 
     return NextResponse.json({
       success: true,
