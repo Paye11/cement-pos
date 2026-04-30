@@ -30,13 +30,14 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     await autoExpire(now);
 
+    const adminView = isAdmin(session);
     const { searchParams } = new URL(request.url);
     const limit = Math.min(50, Math.max(1, Number(searchParams.get("limit") || "10")));
     const view = typeof searchParams.get("view") === "string" ? String(searchParams.get("view")) : "";
 
     const query: Record<string, unknown> = { deletedAt: null };
 
-    if (isAdmin(session)) {
+    if (adminView) {
       if (view === "history") query.status = "Expired";
       else if (view === "active") query.status = "Active";
     } else {
@@ -47,15 +48,26 @@ export async function GET(request: NextRequest) {
     const docs = await Announcement.find(query).sort({ createdAt: -1 }).limit(limit).populate("createdBy", "name");
 
     return NextResponse.json({
-      announcements: docs.map((a) => ({
-        id: a._id.toString(),
-        title: a.title,
-        message: a.message,
-        status: a.status,
-        expiresAt: a.expiresAt,
-        createdAt: a.createdAt,
-        createdBy: a.createdBy && typeof a.createdBy === "object" && "_id" in a.createdBy ? { name: (a.createdBy as unknown as { name?: string }).name || "" } : null,
-      })),
+      announcements: docs.map((a) => {
+        const base = {
+          id: a._id.toString(),
+          title: a.title,
+          message: a.message,
+          createdAt: a.createdAt,
+        };
+
+        if (!adminView) return base;
+
+        return {
+          ...base,
+          status: a.status,
+          expiresAt: a.expiresAt,
+          createdBy:
+            a.createdBy && typeof a.createdBy === "object" && "_id" in a.createdBy
+              ? { name: (a.createdBy as unknown as { name?: string }).name || "" }
+              : null,
+        };
+      }),
     });
   } catch (error) {
     console.error("Get announcements error:", error);

@@ -94,7 +94,7 @@ interface AnnouncementItem {
   title: string;
   message: string;
   createdAt: string;
-  expiresAt: string;
+  expiresAt?: string;
 }
 
 export default function SellerDashboard() {
@@ -244,9 +244,6 @@ export default function SellerDashboard() {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-semibold">{a.title}</p>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">
-                      Expires: {formatDateTime(a.expiresAt)}
-                    </p>
                   </div>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {a.message}
