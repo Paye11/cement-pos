@@ -98,6 +98,11 @@ const navItems = [
     icon: DollarSign,
   },
   {
+    title: "Payroll History",
+    href: "/admin/payroll-history",
+    icon: History,
+  },
+  {
     title: "Expenses History",
     href: "/admin/expenses-history",
     icon: DollarSign,
