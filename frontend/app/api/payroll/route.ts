@@ -11,8 +11,8 @@ function parseIntParam(value: string | null): number | null {
   return Math.floor(n);
 }
 
-function isValidStatus(value: unknown): value is "Pending" | "Approved" {
-  return value === "Pending" || value === "Approved";
+function isValidStatus(value: unknown): value is "Pending" | "Approved" | "Rejected" {
+  return value === "Pending" || value === "Approved" || value === "Rejected";
 }
 
 function isValidPayrollType(value: unknown): value is "Seller" | "StoreBoy" | "Security" {

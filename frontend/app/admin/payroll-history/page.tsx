@@ -62,6 +62,7 @@ const MONTHS: Array<{ value: string; label: string }> = [
 ];
 
 const DEFAULT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => String(DEFAULT_YEAR - i));
 
 function monthLabel(month: number) {
   return MONTHS.find((m) => Number(m.value) === month)?.label || String(month);
@@ -73,7 +74,7 @@ export default function PayrollHistoryPage() {
   const [isApplying, setIsApplying] = useState(false);
 
   const [filters, setFilters] = useState({
-    year: String(DEFAULT_YEAR),
+    year: "all",
     month: "all",
     payrollType: "all",
     search: "",
@@ -85,7 +86,7 @@ export default function PayrollHistoryPage() {
       const params = new URLSearchParams();
       params.set("status", "Approved");
       params.set("limit", "500");
-      if (year.trim()) params.set("year", year.trim());
+      if (year !== "all" && year.trim()) params.set("year", year.trim());
       if (month !== "all") params.set("month", month);
 
       const res = await fetch(`/api/payroll?${params.toString()}`);
@@ -107,7 +108,7 @@ export default function PayrollHistoryPage() {
   }, []);
 
   useEffect(() => {
-    fetchPayroll(String(DEFAULT_YEAR), "all");
+    fetchPayroll("all", "all");
   }, [fetchPayroll]);
 
   const applyFilters = async () => {
@@ -228,13 +229,19 @@ export default function PayrollHistoryPage() {
           <div className="grid gap-4 md:grid-cols-4">
             <div className="flex flex-col gap-2">
               <Label>Year</Label>
-              <Input
-                type="number"
-                min="2000"
-                max="2100"
-                value={filters.year}
-                onChange={(e) => setFilters((p) => ({ ...p, year: e.target.value }))}
-              />
+              <Select value={filters.year} onValueChange={(v) => setFilters((p) => ({ ...p, year: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {YEAR_OPTIONS.map((y) => (
+                    <SelectItem key={y} value={y}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <Label>Month</Label>

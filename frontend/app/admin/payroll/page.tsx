@@ -27,7 +27,7 @@ import { formatCurrency, formatDateTime } from "@/lib/format";
 import { toast } from "sonner";
 
 type PayrollType = "Seller" | "StoreBoy" | "Security";
-type PayrollStatus = "Pending" | "Approved";
+type PayrollStatus = "Pending" | "Approved" | "Rejected";
 
 interface User {
   id: string;
@@ -185,7 +185,12 @@ export default function PayrollPage() {
   const setStatus = async (id: string, status: PayrollStatus) => {
     setUpdatingId(id);
     try {
-      const url = status === "Approved" ? `/api/payroll/${id}/approve` : `/api/payroll/${id}/pending`;
+      const url =
+        status === "Approved"
+          ? `/api/payroll/${id}/approve`
+          : status === "Rejected"
+            ? `/api/payroll/${id}/reject`
+            : `/api/payroll/${id}/pending`;
       const res = await fetch(url, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -411,6 +416,7 @@ export default function PayrollPage() {
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Approved">Approved</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -459,17 +465,32 @@ export default function PayrollPage() {
                     <TableCell className="text-muted-foreground">{formatDateTime(p.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       {p.status === "Pending" ? (
-                        <Button
-                          size="sm"
-                          onClick={() => setStatus(p.id, "Approved")}
-                          disabled={updatingId === p.id}
-                        >
-                          {updatingId === p.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Approve"
-                          )}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => setStatus(p.id, "Approved")}
+                            disabled={updatingId === p.id}
+                          >
+                            {updatingId === p.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Approve"
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            onClick={() => setStatus(p.id, "Rejected")}
+                            disabled={updatingId === p.id}
+                          >
+                            {updatingId === p.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Reject"
+                            )}
+                          </Button>
+                        </div>
                       ) : (
                         <Button
                           size="sm"

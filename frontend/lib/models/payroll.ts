@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export type PayrollType = "Seller" | "StoreBoy" | "Security";
-export type PayrollStatus = "Pending" | "Approved";
+export type PayrollStatus = "Pending" | "Approved" | "Rejected";
 
 export interface IPayroll extends Document {
   _id: mongoose.Types.ObjectId;
@@ -49,7 +49,7 @@ const PayrollSchema = new Schema<IPayroll>(
     },
     status: {
       type: String,
-      enum: ["Pending", "Approved"],
+      enum: ["Pending", "Approved", "Rejected"],
       default: "Pending",
     },
     approvedBy: {
