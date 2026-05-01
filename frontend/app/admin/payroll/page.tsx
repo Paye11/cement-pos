@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { DollarSign, Loader2, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,9 +68,11 @@ export default function PayrollPage() {
   const now = new Date();
   const [users, setUsers] = useState<User[]>([]);
   const [payroll, setPayroll] = useState<PayrollItem[]>([]);
+  const [paidPreview, setPaidPreview] = useState<PayrollItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const [filters, setFilters] = useState({
     month: String(now.getMonth() + 1),
@@ -89,7 +92,7 @@ export default function PayrollPage() {
     return MONTHS.find((m) => m.value === filters.month)?.label || "Month";
   }, [filters.month]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -110,8 +113,8 @@ export default function PayrollPage() {
           username: u.username,
         }));
         setUsers(list);
-        if (!form.userId && list.length > 0) {
-          setForm((p) => ({ ...p, userId: list[0].id }));
+        if (list.length > 0) {
+          setForm((p) => (p.userId ? p : { ...p, userId: list[0].id }));
         }
       }
 
@@ -125,11 +128,27 @@ export default function PayrollPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filters.month, filters.status, filters.year]);
+
+  const fetchPaidPreview = useCallback(async () => {
+    setIsLoadingPreview(true);
+    try {
+      const res = await fetch("/api/payroll?status=Approved&limit=10");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPaidPreview([]);
+        return;
+      }
+      setPaidPreview((data.payroll || []).slice(0, 10));
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+    fetchPaidPreview();
+  }, [fetchData, fetchPaidPreview]);
 
   const applyFilters = async () => {
     await fetchData();
@@ -174,7 +193,7 @@ export default function PayrollPage() {
       }
       toast.success("Payroll created");
       setForm((p) => ({ ...p, amountDollars: "" }));
-      await fetchData();
+      await Promise.all([fetchData(), fetchPaidPreview()]);
     } catch {
       toast.error("Failed to create payroll");
     } finally {
@@ -198,7 +217,7 @@ export default function PayrollPage() {
         return;
       }
       toast.success("Updated");
-      await fetchData();
+      await Promise.all([fetchData(), fetchPaidPreview()]);
     } catch {
       toast.error("Failed to update status");
     } finally {
@@ -263,6 +282,70 @@ export default function PayrollPage() {
               <p className="text-lg font-semibold">{totals.count}</p>
             </div>
           </div>
+          <div className="mt-4">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/payroll-history">View Payroll History</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base font-medium">Preview Paid</CardTitle>
+            <CardDescription>Latest approved payroll payments</CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/payroll-history">View All</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoadingPreview ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : paidPreview.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Year</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Paid Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paidPreview.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">
+                      {p.user?.name || "Unknown"}
+                      <div className="text-xs text-muted-foreground">@{p.user?.username || "-"}</div>
+                    </TableCell>
+                    <TableCell>
+                      {p.payrollType === "Seller"
+                        ? "Seller Salary"
+                        : p.payrollType === "StoreBoy"
+                          ? "Store Boy Salary"
+                          : "Security Salary"}
+                    </TableCell>
+                    <TableCell>{MONTHS.find((m) => Number(m.value) === p.month)?.label || p.month}</TableCell>
+                    <TableCell>{p.year}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(p.amount)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(p.approvalDate || p.createdAt)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-10">
+              No paid records yet. Approve a payroll record to see it here and in Payroll History.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -372,7 +455,7 @@ export default function PayrollPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={applyFilters}>
-              Apply
+              Refresh
             </Button>
           </div>
         </CardHeader>
@@ -465,7 +548,7 @@ export default function PayrollPage() {
                     <TableCell className="text-muted-foreground">{formatDateTime(p.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       {p.status === "Pending" ? (
-                        <div className="flex justify-end gap-2">
+                        <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
                           <Button
                             size="sm"
                             onClick={() => setStatus(p.id, "Approved")}
