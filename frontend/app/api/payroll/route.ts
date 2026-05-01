@@ -142,10 +142,22 @@ export async function POST(request: NextRequest) {
       month,
       year,
       deletedAt: null,
-    }).select("_id");
+    }).select("_id status month year payrollType amount createdAt approvalDate");
     if (existing) {
       return NextResponse.json(
-        { error: "Payroll for this user/type/month/year already exists" },
+        {
+          error: "Payroll for this user/type/month/year already exists",
+          existingPayroll: {
+            id: existing._id.toString(),
+            status: existing.status,
+            month: existing.month,
+            year: existing.year,
+            payrollType: existing.payrollType,
+            amount: existing.amount,
+            createdAt: existing.createdAt,
+            approvalDate: existing.approvalDate,
+          },
+        },
         { status: 400 }
       );
     }

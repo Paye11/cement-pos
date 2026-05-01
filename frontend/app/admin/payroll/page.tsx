@@ -75,7 +75,7 @@ export default function PayrollPage() {
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const [filters, setFilters] = useState({
-    month: String(now.getMonth() + 1),
+    month: "all",
     year: String(now.getFullYear()),
     status: "all",
   });
@@ -89,6 +89,7 @@ export default function PayrollPage() {
   });
 
   const monthLabel = useMemo(() => {
+    if (filters.month === "all") return "All Months";
     return MONTHS.find((m) => m.value === filters.month)?.label || "Month";
   }, [filters.month]);
 
@@ -96,7 +97,7 @@ export default function PayrollPage() {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filters.month) params.append("month", filters.month);
+      if (filters.month && filters.month !== "all") params.append("month", filters.month);
       if (filters.year) params.append("year", filters.year);
       if (filters.status !== "all") params.append("status", filters.status);
 
@@ -188,6 +189,28 @@ export default function PayrollPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (
+          data?.existingPayroll &&
+          typeof data.existingPayroll?.month === "number" &&
+          typeof data.existingPayroll?.year === "number"
+        ) {
+          const existingMonth = String(data.existingPayroll.month);
+          const existingYear = String(data.existingPayroll.year);
+          setFilters((p) => ({
+            ...p,
+            month: existingMonth,
+            year: existingYear,
+            status: "all",
+          }));
+          await fetchData();
+          setTimeout(() => {
+            document.getElementById("payroll-records")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 0);
+          toast.error(
+            `Payroll already exists for ${MONTHS.find((m) => m.value === existingMonth)?.label || existingMonth} ${existingYear} (${data.existingPayroll.status || "Existing"}). Showing it below.`
+          );
+          return;
+        }
         toast.error(data.error || "Failed to create payroll");
         return;
       }
@@ -447,7 +470,7 @@ export default function PayrollPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="payroll-records">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base font-medium">Payroll Records</CardTitle>
@@ -468,6 +491,7 @@ export default function PayrollPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All Months</SelectItem>
                   {MONTHS.map((m) => (
                     <SelectItem key={m.value} value={m.value}>
                       {m.label}
