@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PlusCircle, Filter } from "lucide-react";
+import { PlusCircle, Filter, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Table,
   TableBody,
@@ -95,6 +97,36 @@ export default function SalesHistoryPage() {
     } finally {
       setIsProcessing(null);
     }
+  };
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text("My Sales History", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Filter: ${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}`, 14, 36);
+    
+    const tableData = transactions.map(t => [
+      formatDateTime(t.createdAt),
+      `Cement ${t.cementType}`,
+      String(t.bagsSold),
+      formatCurrency(t.pricePerBag),
+      formatCurrency(t.totalAmount),
+      t.status
+    ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [["Date", "Type", "Bags", "Price/Bag", "Total", "Status"]],
+      body: tableData,
+      theme: "striped",
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    doc.save(`My_Sales_${new Date().getTime()}.pdf`);
   };
 
   const stats = {
@@ -189,12 +221,18 @@ export default function SalesHistoryPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button asChild>
-              <Link href="/seller/new-sale">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                New Sale
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={downloadPDF} className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Download PDF
+              </Button>
+              <Button asChild>
+                <Link href="/seller/new-sale">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  New Sale
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

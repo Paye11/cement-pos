@@ -3,9 +3,12 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { History } from "lucide-react";
+import { History, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
 import {
   Table,
   TableBody,
@@ -103,6 +106,128 @@ function AdminHistoryPageInner() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const downloadHistoryPDF = () => {
+    const doc = new jsPDF();
+    const userName = stockLogs[0]?.user?.name || events[0]?.seller?.name || "User";
+    
+    doc.setFontSize(18);
+    doc.text("System History Report", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Target: ${userId ? userName : "All Sellers"}`, 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 36);
+
+    // Section 1: Stock Assignment
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+    doc.text("1. Stock Assignment History", 14, 48);
+    
+    const stockTableData = stockLogs.map(l => [
+      formatDateTime(l.createdAt),
+      l.user?.name || "Unknown",
+      `Cement ${l.cementType}`,
+      l.action.toUpperCase(),
+      formatNumber(l.amount),
+      l.performedBy?.name || "-"
+    ]);
+
+    autoTable(doc, {
+      startY: 52,
+      head: [["Date", "User", "Cement", "Action", "Amount", "By"]],
+      body: stockTableData,
+      theme: "striped",
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    // Section 2: Sales Events
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(14);
+    doc.text("2. Sales Transaction Events", 14, finalY);
+    
+    const txTableData = events.map(e => [
+      formatDateTime(e.createdAt),
+      e.seller?.name || "Unknown",
+      e.eventType.toUpperCase(),
+      `Cement ${e.cementType}`,
+      formatNumber(e.bagsSold),
+      formatCurrency(e.totalAmount),
+      e.performedBy?.name || "-"
+    ]);
+
+    autoTable(doc, {
+      startY: finalY + 4,
+      head: [["Date", "Seller", "Event", "Cement", "Bags", "Amount", "By"]],
+      body: txTableData,
+      theme: "striped",
+      headStyles: { fillColor: [39, 174, 96] },
+    });
+
+    doc.save(`History_Report_${new Date().getTime()}.pdf`);
+  };
+
+  const downloadSalesOnlyPDF = () => {
+    const doc = new jsPDF();
+    const userName = events[0]?.seller?.name || "User";
+    
+    doc.setFontSize(18);
+    doc.text("Sales Transaction Report", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Target: ${userId ? userName : "All Sellers"}`, 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 36);
+
+    const txTableData = events.map(e => [
+      formatDateTime(e.createdAt),
+      e.seller?.name || "Unknown",
+      e.eventType.toUpperCase(),
+      `Cement ${e.cementType}`,
+      formatNumber(e.bagsSold),
+      formatCurrency(e.totalAmount),
+      e.performedBy?.name || "-"
+    ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [["Date", "Seller", "Event", "Cement", "Bags", "Amount", "By"]],
+      body: txTableData,
+      theme: "striped",
+      headStyles: { fillColor: [39, 174, 96] },
+    });
+
+    doc.save(`Sales_Report_${new Date().getTime()}.pdf`);
+  };
+
+  const downloadStockOnlyPDF = () => {
+    const doc = new jsPDF();
+    const userName = stockLogs[0]?.user?.name || "User";
+    
+    doc.setFontSize(18);
+    doc.text("Stock Assignment Report", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Target: ${userId ? userName : "All Sellers"}`, 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 36);
+
+    const stockTableData = stockLogs.map(l => [
+      formatDateTime(l.createdAt),
+      l.user?.name || "Unknown",
+      `Cement ${l.cementType}`,
+      l.action.toUpperCase(),
+      formatNumber(l.amount),
+      l.performedBy?.name || "-"
+    ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [["Date", "User", "Cement", "Action", "Amount", "By"]],
+      body: stockTableData,
+      theme: "striped",
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    doc.save(`Stock_Report_${new Date().getTime()}.pdf`);
   };
 
   const renderEventBadge = (eventType: TxEvent["eventType"]) => {
@@ -290,7 +415,16 @@ function AdminHistoryPageInner() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
+        <Button variant="outline" onClick={downloadStockOnlyPDF} className="flex items-center gap-2">
+          <Download className="h-4 w-4" /> Stock PDF
+        </Button>
+        <Button variant="outline" onClick={downloadSalesOnlyPDF} className="flex items-center gap-2">
+          <Download className="h-4 w-4" /> Sales PDF
+        </Button>
+        <Button variant="outline" onClick={downloadHistoryPDF} className="flex items-center gap-2">
+          <Download className="h-4 w-4" /> Full History PDF
+        </Button>
         <Button variant="outline" onClick={fetchHistory}>
           Refresh
         </Button>

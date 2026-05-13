@@ -18,9 +18,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import { Loader2, Package, TrendingUp, History } from "lucide-react";
+import { Loader2, Package, TrendingUp, History, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface SellerDetailsModalProps {
   userId: string;
@@ -104,13 +106,92 @@ export function SellerDetailsModal({
     return Object.values(groups).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
+  const downloadStockPDF = () => {
+    if (!data) return;
+    const doc = new jsPDF();
+    const groupedStock = getGroupedStock();
+    
+    doc.setFontSize(18);
+    doc.text("Stock Addition History", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Seller: ${userName}`, 14, 30);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
+    
+    const tableData = groupedStock.map(group => [
+      formatDateTime(group.date),
+      group["32.5"] > 0 ? `+${group["32.5"]}` : "0",
+      group["42.5"] > 0 ? `+${group["42.5"]}` : "0",
+      String(group["32.5"] + group["42.5"])
+    ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [["Date Added", "Cement 32.5", "Cement 42.5", "Total Bags"]],
+      body: tableData,
+      theme: "striped",
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    doc.save(`${userName.replace(/\s+/g, "_")}_stock_history.pdf`);
+  };
+
+  const downloadSalesPDF = () => {
+    if (!data) return;
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text("Sales Records", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Seller: ${userName}`, 14, 30);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 36);
+    
+    const tableData = data.salesHistory.map(sale => [
+      formatDateTime(sale.createdAt),
+      `Cement ${sale.cementType}`,
+      String(sale.bagsSold),
+      formatCurrency(sale.totalAmount)
+    ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [["Date Sold", "Type", "Bags", "Amount"]],
+      body: tableData,
+      theme: "striped",
+      headStyles: { fillColor: [39, 174, 96] },
+    });
+
+    doc.save(`${userName.replace(/\s+/g, "_")}_sales_records.pdf`);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Detailed Records for {userName}
-          </DialogTitle>
+          <div className="flex items-center justify-between pr-8">
+            <DialogTitle className="flex items-center gap-2">
+              Detailed Records for {userName}
+            </DialogTitle>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={downloadStockPDF}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" /> Stock PDF
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={downloadSalesPDF}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" /> Sales PDF
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
 
         {isLoading ? (

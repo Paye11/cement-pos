@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Pencil, Trash2, Loader2, History } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, History, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Table,
   TableBody,
@@ -43,7 +45,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
 import { toast } from "sonner";
 import { UserInventoryManagement } from "@/components/admin/user-inventory-management";
 import { UserExpenseManagement } from "@/components/admin/user-expense-management";
@@ -74,6 +76,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [createDialog, setCreateDialog] = useState(false);
   const [editDialog, setEditDialog] = useState<{
     open: boolean;
@@ -232,6 +235,89 @@ export default function UsersPage() {
       toast.error("Failed to delete user");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const downloadUserPDF = async (user: User) => {
+    setIsDownloading(user.id);
+    try {
+      const stockParams = new URLSearchParams({ userId: user.id, limit: "100" });
+      const txParams = new URLSearchParams({ sellerId: user.id, limit: "200" });
+      
+      const [stockRes, eventsRes] = await Promise.all([
+        fetch(`/api/admin/history/stock?${stockParams.toString()}`),
+        fetch(`/api/admin/history/transactions?${txParams.toString()}`),
+      ]);
+
+      if (!stockRes.ok || !eventsRes.ok) {
+        throw new Error("Failed to fetch history data");
+      }
+
+      const stockData = await stockRes.json();
+      const txData = await eventsRes.json();
+
+      const doc = new jsPDF();
+      
+      doc.setFontSize(18);
+      doc.text("Seller Performance Report", 14, 22);
+      doc.setFontSize(11);
+      doc.setTextColor(100);
+      doc.text(`Seller: ${user.name} (@${user.username})`, 14, 30);
+      doc.text(`Location: ${user.location || "-"}`, 14, 36);
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 42);
+
+      // Stock Table
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text("Stock Assignment History", 14, 54);
+      
+      const stockLogs = stockData.logs || [];
+      const stockTableData = stockLogs.map((l: any) => [
+        formatDateTime(l.createdAt),
+        `Cement ${l.cementType}`,
+        l.action.toUpperCase(),
+        formatNumber(l.amount),
+        l.performedBy?.name || "-"
+      ]);
+
+      autoTable(doc, {
+        startY: 58,
+        head: [["Date", "Cement", "Action", "Amount", "By"]],
+        body: stockTableData,
+        theme: "striped",
+        headStyles: { fillColor: [41, 128, 185] },
+      });
+
+      // Transaction Table
+      const finalY = (doc as any).lastAutoTable.finalY + 15;
+      doc.setFontSize(14);
+      doc.text("Sales Transaction Events", 14, finalY);
+      
+      const events = txData.events || [];
+      const txTableData = events.map((e: any) => [
+        formatDateTime(e.createdAt),
+        e.eventType.toUpperCase(),
+        `Cement ${e.cementType}`,
+        formatNumber(e.bagsSold),
+        formatCurrency(e.totalAmount),
+        e.performedBy?.name || "-"
+      ]);
+
+      autoTable(doc, {
+        startY: finalY + 4,
+        head: [["Date", "Event", "Cement", "Bags", "Amount", "By"]],
+        body: txTableData,
+        theme: "striped",
+        headStyles: { fillColor: [39, 174, 96] },
+      });
+
+      doc.save(`${user.name.replace(/\s+/g, "_")}_History_${new Date().getTime()}.pdf`);
+      toast.success("PDF generated successfully");
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setIsDownloading(null);
     }
   };
 
@@ -433,12 +519,28 @@ export default function UsersPage() {
                       <UserExpenseManagement userId={user.id} userName={user.name} />
                     </TableCell>
                     <TableCell>
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/admin/history?userId=${user.id}`}>
-                          <History className="h-4 w-4 mr-2" />
-                          View
-                        </Link>
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        <Button asChild size="sm" variant="outline" className="w-full">
+                          <Link href={`/admin/history?userId=${user.id}`}>
+                            <History className="h-4 w-4 mr-2" />
+                            View
+                          </Link>
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => downloadUserPDF(user)}
+                          disabled={isDownloading === user.id}
+                        >
+                          {isDownloading === user.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Download className="h-4 w-4 mr-2" />
+                          )}
+                          PDF
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge
