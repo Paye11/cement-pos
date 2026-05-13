@@ -169,26 +169,28 @@ export function SellerDetailsModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <div className="flex items-center justify-between pr-8">
-            <DialogTitle className="flex items-center gap-2">
-              Detailed Records for {userName}
-            </DialogTitle>
+          <div className="flex flex-col gap-4 pr-8">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                Detailed Records for {userName}
+              </DialogTitle>
+            </div>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={downloadStockPDF}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
               >
-                <Download className="h-4 w-4" /> Stock PDF
+                <Download className="h-4 w-4" /> Download Stock PDF
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={downloadSalesPDF}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
               >
-                <Download className="h-4 w-4" /> Sales PDF
+                <Download className="h-4 w-4" /> Download Sales PDF
               </Button>
             </div>
           </div>
