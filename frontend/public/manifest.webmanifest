@@ -1,0 +1,17 @@
+{
+  "name": "Family Tree Business Inc POS",
+  "short_name": "FTB POS",
+  "description": "Cement Store Point of Sale and Inventory Management System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "/family_tree.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
