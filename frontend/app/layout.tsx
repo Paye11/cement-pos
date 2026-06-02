@@ -4,25 +4,17 @@ import { Toaster } from 'sonner'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Cement Store POS',
-  description: 'Point of Sale and Inventory Management System for Cement Store',
-  generator: 'v0.app',
+  title: 'Cement Store POS - Family Tree Business Inc',
+  description: 'Point of Sale and Inventory Management System for Family Tree Business Inc',
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/family_tree.png',
+        sizes: 'any',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/family_tree.png',
+    shortcut: '/family_tree.png',
   },
 }
 
