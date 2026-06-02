@@ -43,11 +43,18 @@ interface DashboardStats {
   rejectedCount: number;
   todayBags: number;
   todayRevenue: number;
-  inventory: Array<{
-    cementType: string;
-    totalAssigned: number;
-    remainingStock: number;
-  }>;
+  totalSalesAmount: number;
+  totalSalesBags: number;
+  inventory: {
+    "42.5": {
+      assigned: number;
+      remaining: number;
+    };
+    "32.5": {
+      assigned: number;
+      remaining: number;
+    };
+  };
   recentTransactions: Array<{
     id: string;
     cementType: string;
@@ -277,7 +284,7 @@ export default function SellerDashboard() {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <StatCard
           title="Pending Approval"
           value={stats.pendingCount}
@@ -311,6 +318,48 @@ export default function SellerDashboard() {
           icon={PlusCircle}
           description={formatCurrency(stats.todayRevenue)}
         />
+        <StatCard
+          title="Total Sales"
+          value={`${stats.totalSalesBags} bags`}
+          icon={DollarSign}
+          description={formatCurrency(stats.totalSalesAmount)}
+          variant="success"
+        />
+      </div>
+
+      {/* Inventory Stats */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-medium">Cement 42.5 Inventory</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <p className="text-sm text-muted-foreground">Remaining</p>
+              <p className="text-lg font-semibold">{stats.inventory["42.5"].remaining} bags</p>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <p className="text-sm text-muted-foreground">Total Assigned</p>
+              <p className="text-lg font-semibold">{stats.inventory["42.5"].assigned} bags</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-medium">Cement 32.5 Inventory</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <p className="text-sm text-muted-foreground">Remaining</p>
+              <p className="text-lg font-semibold">{stats.inventory["32.5"].remaining} bags</p>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <p className="text-sm text-muted-foreground">Total Assigned</p>
+              <p className="text-lg font-semibold">{stats.inventory["32.5"].assigned} bags</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

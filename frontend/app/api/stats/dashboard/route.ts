@@ -244,6 +244,7 @@ export async function GET() {
         approvedCount,
         rejectedCount,
         userInventory,
+        allApprovedTransactions,
       ] = await Promise.all([
         Transaction.find({ userId: session.userId, deletedAt: null })
           .sort({ createdAt: -1 })
@@ -269,6 +270,7 @@ export async function GET() {
           deletedAt: null,
         }),
         UserInventory.find({ userId: session.userId, deletedAt: null }),
+        Transaction.find({ userId: session.userId, status: "Approved", deletedAt: null }),
       ]);
 
       const userObjectId = new mongoose.Types.ObjectId(session.userId);
@@ -303,6 +305,10 @@ export async function GET() {
       );
       const todayBags = todaySales.reduce((sum, t) => sum + t.bagsSold, 0);
       const todayRevenue = todaySales.reduce((sum, t) => sum + t.totalAmount, 0);
+      
+      // Calculate total sales
+      const totalSalesAmount = allApprovedTransactions.reduce((sum, t) => sum + t.totalAmount, 0);
+      const totalSalesBags = allApprovedTransactions.reduce((sum, t) => sum + t.bagsSold, 0);
 
       const inventory = {
         "42.5": {
@@ -330,6 +336,8 @@ export async function GET() {
         rejectedCount,
         todayBags,
         todayRevenue,
+        totalSalesAmount,
+        totalSalesBags,
         inventory,
         expenses: {
           amount: expenseAmount,
